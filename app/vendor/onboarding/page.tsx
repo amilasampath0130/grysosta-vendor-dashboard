@@ -1,11 +1,9 @@
+import Information from "@/components/onboard/Information";
 
-
-const SubmitionPage = () => {
+export default function OnboardingPage() {
   return (
     <div>
-      <h1>Submit your details</h1>
+      <Information />
     </div>
-  )
+  );
 }
-
-export default SubmitionPage

@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+
+// TEMP MOCK (replace later with API)
+const getMockVendorStatus = () => {
+  return "NEW"; // NEW | PENDING | APPROVED
+};
 
 export default function VendorGuard({
   children,
@@ -9,25 +14,26 @@ export default function VendorGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const status = getMockVendorStatus();
 
-    if (!token) {
-      router.replace("/");
-      return;
+    if (status === "NEW" && pathname !== "/vendor/onboarding") {
+      router.replace("/vendor/onboarding");
     }
 
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-
-      if (payload.role !== "admin") { //change after completing this part still are in admin 
-        router.replace("/");
-      }
-    } catch {
-      router.replace("/");
+    if (status === "PENDING" && pathname !== "/vendor/pending") {
+      router.replace("/vendor/pending");
     }
-  }, []);
+
+    if (
+      status === "APPROVED" &&
+      (pathname === "/vendor/onboarding" || pathname === "/vendor/pending")
+    ) {
+      router.replace("/vendor/dashboard");
+    }
+  }, [pathname, router]);
 
   return <>{children}</>;
 }

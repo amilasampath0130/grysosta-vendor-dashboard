@@ -5,7 +5,7 @@ import Header from "@/components/UI/Header";
 import Sidebar from "@/components/UI/SideBar";
 import { useState } from "react";
 
-export default function AdminLayout({
+export default function VendorLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -19,7 +19,7 @@ export default function AdminLayout({
 
         <div className="flex flex-col flex-1">
           <Header setOpen={setOpen} />
-          <main className="p-4 md:p-6 overflow-y-auto bg-gray-50">
+          <main className="flex-1 p-4 md:p-6 overflow-y-auto bg-gray-50">
             {children}
           </main>
         </div>
