@@ -1,4 +1,4 @@
-import Userinfo from "@/components/Userinfo"
+
 
 const Dashboard = () => {
   return (

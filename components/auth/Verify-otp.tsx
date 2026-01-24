@@ -77,7 +77,7 @@ export default function VerifyOtpPage() {
       if (data.success) {
         // 🔐 Store JWT
         localStorage.setItem("token", data.data.token);
-        router.replace("/vendor/dashboard");
+        router.replace("/vendor/pending");
       } else {
         setError(data.message || "Invalid OTP");
       }
