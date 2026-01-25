@@ -16,16 +16,20 @@ export default function Information() {
   const [businessType, setBusinessType] = useState("");
   const [buscategory, setBuscategory] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
+  const [UserIDDoc, setUserIDDoc] = useState<File | null>(null);
+  const [BusinessRegDoc, setBusinessRegDoc] = useState<File | null>(null);
   const [typeofoffering, setTypeofoffering] = useState("");
   const [businessPhoneNumber, setBusinessPhoneNumber] = useState("");
   //contact details
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  
   const router = useRouter();
 
   const handleSubmit = () => {
-    
     router.push("/vendor/pending");
   };
 
@@ -37,27 +41,29 @@ export default function Information() {
           <p className="text-gray-600 mb-2 font-bold">
             please provide personal details to continue.
           </p>
-          <input
-            type="text"
-            value={FirstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="First Name"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <input
-            type="text"
-            value={middName}
-            onChange={(e) => setMiddleName(e.target.value)}
-            placeholder="Middle Name"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <input
-            type="text"
-            value={LastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Last Name"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
+          <div className=" grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-2">
+            <input
+              type="text"
+              value={FirstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="First Name"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+              type="text"
+              value={middName}
+              onChange={(e) => setMiddleName(e.target.value)}
+              placeholder="Middle Name"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+              type="text"
+              value={LastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Last Name"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+          </div>
           <input
             type="text"
             value={Address}
@@ -65,27 +71,29 @@ export default function Information() {
             placeholder="Address"
             className="w-full p-2 border border-gray-300 rounded"
           />
-          <input
-            type="text"
-            value={City}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="City"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <input
-            type="text"
-            value={State}
-            onChange={(e) => setState(e.target.value)}
-            placeholder="State/Province/Region"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <input
-            type="text"
-            value={ZipCode}
-            onChange={(e) => setZipCode(e.target.value)}
-            placeholder="ZIP/Postal Code"
-            className="w-full p-2 border border-gray-300 rounded mb-6"
-          />
+          <div className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-2">
+            <input
+              type="text"
+              value={City}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="City"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+              type="text"
+              value={State}
+              onChange={(e) => setState(e.target.value)}
+              placeholder="State/Province/Region"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+              type="text"
+              value={ZipCode}
+              onChange={(e) => setZipCode(e.target.value)}
+              placeholder="ZIP/Postal Code"
+              className="w-full p-2 border border-gray-300 rounded "
+            />
+          </div>
           <p className="text-gray-600 mb-6 font-bold">
             Please provide your business details to continue.
           </p>
@@ -123,37 +131,72 @@ export default function Information() {
             placeholder="Type of Offering"
             className="w-full p-2 border border-gray-300 rounded"
           />
+
           <input
-            type="tel"
+            type="number"
             value={businessPhoneNumber}
             onChange={(e) => setBusinessPhoneNumber(e.target.value)}
             placeholder="Business Phone Number"
             className="w-full p-2 border border-gray-300 rounded"
           />
+          <div className="grid lg:grid-cols-1 md:grid-cols-1 sm:grid-cols-1 gap-2">
+            <p className="flex items-start justify-start text-start text-gray-700 font-bold">
+              Upload a valid government-issued ID (e.g., passport, driver's
+              license).
+            </p>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setUserIDDoc(e.target.files[0]);
+                }
+              }}
+              className="w-full p-2 border-2 border-red-400 rounded"
+            />
+            <p className="flex items-start justify-start text-start text-gray-700 font-bold">
+              Upload a valid business registration document (e.g., business
+              license, tax registration).
+            </p>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setBusinessRegDoc(e.target.files[0]);
+                }
+              }}
+              className="w-full p-2 border-2 border-red-400 rounded"
+            />
+          </div>
           <p className="text-gray-600 mb-6 font-bold">
             Please provide your contact details to continue.
           </p>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email Address"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <input
-            type="tel"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder="Phone Number"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="bg-green-600 text-white px-4 py-2 rounded mt-4 hover:bg-green-700 transition-colors duration-200 ease-in-out focus:outline-none focus:ring focus:ring-green-500 focus:ring-opacity-50 active:bg-green-800 active:text-white active:shadow-inner active:ring active:ring-green-50 active:ring-opacity-50 disabled:bg-gray-400 disabled:text-gray-70 disabled:cursor-not-allowered disabled:hover:bg-gray-40 disabled:hover:text-gray disabled:hover:cursor-not-allowered disabled:focus:outline-none disabled:focus:ring disabled:focus:ring-green disabled:focus:ring-opacity-disabled:focus:border-transparent disabled:focus:border-transparent "
-          >
-            Submit for Review
-          </button>
+          <div className="grid lg:grid-cols-2 md:grid-cols-2 sm:grid-cols-1 gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email Address"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            <input
+              type="number"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="Phone Number"
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+          </div>
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="bg-green-600 text-white px-4 py-2 rounded mt-4 hover:bg-green-700 transition-colors duration-200 ease-in-out focus:outline-none focus:ring focus:ring-green-500 focus:ring-opacity-50 active:bg-green-800 active:text-white active:shadow-inner active:ring active:ring-green-50 active:ring-opacity-50 disabled:bg-gray-400 disabled:text-gray-70 disabled:cursor-not-allowered disabled:hover:bg-gray-40 disabled:hover:text-gray disabled:hover:cursor-not-allowered disabled:focus:outline-none disabled:focus:ring disabled:focus:ring-green disabled:focus:ring-opacity-disabled:focus:border-transparent disabled:focus:border-transparent "
+            >
+              Submit for Review
+            </button>
+          </div>
         </form>
       </div>
     </div>
