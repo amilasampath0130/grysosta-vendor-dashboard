@@ -1,12 +1,24 @@
-import { withAuth } from "next-auth/middleware"
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default withAuth({
-  pages: {
-    signIn: "/", // redirect here if user is not authenticated
-  },
-})
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("auth-token")?.value;
 
-// Protect /dashboard and all subpaths
-export const config = {
-  matcher: ["/dashboard/:path*","/products/:path*"],
+  // Define protected paths
+  const protectedPaths = ["/dashboard", "/products", "/vendor"];
+
+  const isProtected = protectedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path),
+  );
+
+  if (isProtected && !token) {
+    // Redirect to login if no token
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+
+  return NextResponse.next();
 }
+
+export const config = {
+  matcher: ["/dashboard/:path*", "/products/:path*", "/vendor/:path*"],
+};

@@ -23,7 +23,8 @@ export default function VerifyOtpPage() {
         const res = await fetch(
           `${
             process.env.NEXT_PUBLIC_API_URL
-          }/api/vendor/otp-status?email=${encodeURIComponent(email)}`
+          }/api/vendor/otp-status?email=${encodeURIComponent(email)}`,
+          { credentials: "include" },
         );
         const data = await res.json();
         if (!mounted) return;
@@ -68,15 +69,15 @@ export default function VerifyOtpPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ email, otp }),
-        }
+        },
       );
 
       const data = await res.json();
 
       if (data.success) {
-        // 🔐 Store JWT
-        localStorage.setItem("token", data.data.token);
+        // Token is now in httpOnly cookie
         router.replace("/vendor/onboarding");
       } else {
         setError(data.message || "Invalid OTP");
@@ -98,8 +99,9 @@ export default function VerifyOtpPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ email }),
-        }
+        },
       );
       const data = await res.json();
       if (data.success) {
@@ -157,8 +159,8 @@ export default function VerifyOtpPage() {
             {resendLoading
               ? "Sending..."
               : msLeft > 0
-              ? `Resend available in ${Math.ceil(msLeft / 1000)}s`
-              : "Resend OTP"}
+                ? `Resend available in ${Math.ceil(msLeft / 1000)}s`
+                : "Resend OTP"}
           </button>
 
           <div className="text-sm text-gray-600">{info}</div>

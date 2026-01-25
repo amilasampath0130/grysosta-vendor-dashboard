@@ -26,17 +26,87 @@ export default function Information() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
+
   const router = useRouter();
 
-  const handleSubmit = () => {
-    router.push("/vendor/pending");
+  const handleSubmit = async () => {
+    if (loading) return;
+
+    // Basic validation
+    if (!FirstName.trim() || !LastName.trim() || !businessName.trim()) {
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/submit-info`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            firstName: FirstName,
+            middleName: middName,
+            lastName: LastName,
+            address: Address,
+            city: City,
+            state: State,
+            zipCode: ZipCode,
+            businessName,
+            businessType,
+            businessCategory: buscategory,
+            businessAddress,
+            businessPhoneNumber,
+            email,
+            phoneNumber,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        router.push("/vendor/pending");
+      } else {
+        setError(data.message || "Submission failed");
+      }
+    } catch (err: any) {
+      setError("Server error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      router.push("/auth/login");
+    } catch (error) {
+      console.error("Logout failed", error);
+      // Still redirect
+      router.push("/auth/login");
+    }
   };
 
   return (
     <div className="grid grid-cols-1 gap-6">
       <div className="bg-white p-6 rounded shadow">
-        <h1 className="text-2xl font-bold mb-4">Vendor Information</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Vendor Information</h1>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Logout
+          </button>
+        </div>
         <form className="space-y-4">
           <p className="text-gray-600 mb-2 font-bold">
             please provide personal details to continue.
@@ -192,9 +262,10 @@ export default function Information() {
             <button
               type="button"
               onClick={handleSubmit}
+              disabled={loading}
               className="bg-green-600 text-white px-4 py-2 rounded mt-4 hover:bg-green-700 transition-colors duration-200 ease-in-out focus:outline-none focus:ring focus:ring-green-500 focus:ring-opacity-50 active:bg-green-800 active:text-white active:shadow-inner active:ring active:ring-green-50 active:ring-opacity-50 disabled:bg-gray-400 disabled:text-gray-70 disabled:cursor-not-allowered disabled:hover:bg-gray-40 disabled:hover:text-gray disabled:hover:cursor-not-allowered disabled:focus:outline-none disabled:focus:ring disabled:focus:ring-green disabled:focus:ring-opacity-disabled:focus:border-transparent disabled:focus:border-transparent "
             >
-              Submit for Review
+              {loading ? "Submitting..." : "Submit for Review"}
             </button>
           </div>
         </form>

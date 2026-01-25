@@ -33,6 +33,7 @@ const LoginForm = () => {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({ email, password }),
         },
       );
@@ -46,17 +47,7 @@ const LoginForm = () => {
       }
 
       if (!response.ok) {
-        // Handle known HTTP errors
-        if (response.status === 401) {
-          throw new Error("Invalid email or password.");
-        }
-        if (response.status === 404) {
-          throw new Error("Login service not found.");
-        }
-        if (response.status >= 500) {
-          throw new Error("Server error. Please try again later.");
-        }
-
+        // Handle known HTTP errors - use backend message
         throw new Error(data?.message || "Login failed.");
       }
 
