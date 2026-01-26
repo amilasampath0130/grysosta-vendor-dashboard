@@ -1,33 +1,39 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Users,
   Settings,
   Home,
   Shield,
   X,
-  ShoppingCart
-} from 'lucide-react'
-import { Dispatch, SetStateAction } from 'react'
+  ShoppingCart,
+  CreditCard,
+  Star,
+  Store,
+  BellRing
+} from "lucide-react";
+import { Dispatch, SetStateAction } from "react";
 
 interface SidebarProps {
-  open: boolean
-  setOpen: Dispatch<SetStateAction<boolean>>
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const navItems = [
-  { name: 'Dashboard', href: '/vendor/dashboard', icon: Home },
-  { name: 'Profile', href: '/vendor/profile', icon: Users },
-  { name: 'Products', href: '/vendor/products', icon: ShoppingCart },
-  // { name: 'Requirements', href: '/vendor/requirements', icon: FileText },
-  // { name: 'Analytics', href: '/vendor/analytics', icon: BarChart3 },
-  { name: 'Settings', href: '/vendor/settings', icon: Settings },
-]
+  { name: "Dashboard", href: "/vendor/dashboard", icon: Home },
+  { name: "Offers/rewards", href: "/vendor/offers", icon: Star },
+  { name: 'Business Profile', href: '/vendor/businessProfile', icon: Store },
+  { name: "Vendor Profile", href: "/vendor/profile", icon: Users },
+  // { name: "Products", href: "/vendor/products", icon: ShoppingCart },
+  { name: "Billing & Payments", href: "/vendor/billing", icon: CreditCard },
+  { name: "Notifications", href: "/vendor/notifications", icon: BellRing },
+  { name: "Settings", href: "/vendor/settings", icon: Settings },
+];
 
 export default function Sidebar({ open, setOpen }: SidebarProps) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <>
@@ -42,7 +48,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
       <aside
         className={`fixed md:static z-50 h-full w-64 bg-white border-r border-gray-200
         transition-transform duration-300
-        ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         {/* Header */}
         <div className="p-6 flex items-center justify-between">
@@ -64,9 +70,9 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 px-4 space-y-2">
           {navItems.map((item) => {
-            const Icon = item.icon
+            const Icon = item.icon;
             const isActive =
-              pathname === item.href || pathname.startsWith(item.href + '/')
+              pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
               <Link
@@ -76,30 +82,30 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                   ${
                     isActive
-                      ? 'bg-green-400 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? "bg-green-400 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
                   }`}
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.name}</span>
               </Link>
-            )
+            );
           })}
         </nav>
 
         {/* Footer */}
         {/* <div className="p-4 border-t border-gray-200"> */}
-          {/* <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50"> */}
-            {/* <div className="w-8 h-8 rounded-full bg-green-400 flex items-center justify-center"> */}
-              {/* <span className="text-white font-semibold">A</span> */}
-            {/* </div> */}
-            {/* <div> */}
-              {/* <p className="text-sm font-medium text-gray-800">Admin User</p>
+        {/* <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50"> */}
+        {/* <div className="w-8 h-8 rounded-full bg-green-400 flex items-center justify-center"> */}
+        {/* <span className="text-white font-semibold">A</span> */}
+        {/* </div> */}
+        {/* <div> */}
+        {/* <p className="text-sm font-medium text-gray-800">Admin User</p>
               <p className="text-xs text-gray-500">Super Admin</p> */}
-            {/* </div> */}
-          {/* </div> */}
+        {/* </div> */}
+        {/* </div> */}
         {/* </div> */}
       </aside>
     </>
-  )
+  );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Loading from "@/components/UI/Loading";
 
 export default function VendorGuard({
   children,
@@ -22,6 +23,7 @@ export default function VendorGuard({
           `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`,
           {
             credentials: "include",
+            headers: { "Cache-Control": "no-cache" },
           },
         );
         if (res.ok) {
@@ -43,7 +45,7 @@ export default function VendorGuard({
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, pathname]);
 
   useEffect(() => {
     if (loading || !isAuthenticated || !vendorStatus) return;
@@ -68,13 +70,7 @@ export default function VendorGuard({
     }
   }, [pathname, router, vendorStatus, loading, isAuthenticated]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
-    );
-  }
+  if (loading) return <Loading />;
 
   if (!isAuthenticated) {
     return null; // Will redirect in useEffect

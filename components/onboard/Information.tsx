@@ -87,11 +87,11 @@ export default function Information() {
         method: "POST",
         credentials: "include",
       });
-      router.push("/auth/login");
+      router.push("/auth/pending");
     } catch (error) {
       console.error("Logout failed", error);
       // Still redirect
-      router.push("/auth/login");
+      router.push("/auth/pending");
     }
   };
 
@@ -194,13 +194,13 @@ export default function Information() {
             placeholder="Business Address"
             className="w-full p-2 border border-gray-300 rounded"
           />
-          <input
+          {/* <input
             type="text"
             value={typeofoffering}
             onChange={(e) => setTypeofoffering(e.target.value)}
             placeholder="Type of Offering"
             className="w-full p-2 border border-gray-300 rounded"
-          />
+          /> */}
 
           <input
             type="number"
