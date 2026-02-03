@@ -14,7 +14,9 @@ export default function VendorGuard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [vendorStatus, setVendorStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const isOnboardingRoute = pathname === "/vendor/onboarding";
+  const isOnboardingRoute = pathname.startsWith("/vendor/onboarding");
+  const isPendingRoute = pathname.startsWith("/vendor/pending");
+  const isPublicFlow = isOnboardingRoute || isPendingRoute;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -33,14 +35,14 @@ export default function VendorGuard({
           setVendorStatus(data.user?.vendorStatus || "NEW");
         } else {
           setIsAuthenticated(false);
-          if (!isOnboardingRoute) {
+          if (!isPublicFlow) {
             router.replace("/auth/login");
             return;
           }
         }
       } catch (error) {
         setIsAuthenticated(false);
-        if (!isOnboardingRoute) {
+        if (!isPublicFlow) {
           router.replace("/auth/login");
           return;
         }
@@ -50,34 +52,39 @@ export default function VendorGuard({
     };
 
     checkAuth();
-  }, [router, pathname, isOnboardingRoute]);
+  }, [router, pathname, isPublicFlow]);
 
   useEffect(() => {
     if (loading || !isAuthenticated || !vendorStatus) return;
 
-    if (vendorStatus === "NEW" && pathname !== "/vendor/onboarding") {
+    if (vendorStatus === "NEW" && !isOnboardingRoute) {
       router.replace("/vendor/onboarding");
     }
 
-    if (vendorStatus === "PENDING" && pathname !== "/vendor/pending") {
+    if (vendorStatus === "PENDING" && !isPendingRoute) {
       router.replace("/vendor/pending");
     }
 
-    if (vendorStatus === "REJECTED" && pathname !== "/vendor/onboarding") {
+    if (vendorStatus === "REJECTED" && !isOnboardingRoute) {
       router.replace("/vendor/onboarding");
     }
 
-    if (
-      vendorStatus === "APPROVED" &&
-      (pathname === "/vendor/onboarding" || pathname === "/vendor/pending")
-    ) {
+    if (vendorStatus === "APPROVED" && (isOnboardingRoute || isPendingRoute)) {
       router.replace("/vendor/dashboard");
     }
-  }, [pathname, router, vendorStatus, loading, isAuthenticated]);
+  }, [
+    pathname,
+    router,
+    vendorStatus,
+    loading,
+    isAuthenticated,
+    isOnboardingRoute,
+    isPendingRoute,
+  ]);
 
   if (loading) return <Loading />;
 
-  if (!isAuthenticated && !isOnboardingRoute) {
+  if (!isAuthenticated && !isPublicFlow) {
     return null; // Will redirect in useEffect
   }
 

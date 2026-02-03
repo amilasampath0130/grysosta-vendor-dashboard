@@ -96,11 +96,11 @@ export default function Information() {
         method: "POST",
         credentials: "include",
       });
-      router.push("/auth/pending");
+      router.push("/auth/login");
     } catch (error) {
       console.error("Logout failed", error);
       // Still redirect
-      router.push("/auth/pending");
+      router.push("/auth/login");
     }
   };
 

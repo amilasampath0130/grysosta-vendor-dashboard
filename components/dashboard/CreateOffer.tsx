@@ -101,7 +101,6 @@ export default function CreateOffer() {
               <option value="single">Selected Location</option>
             </select>
           </div>
-
           {/* Expiry */}
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-600">

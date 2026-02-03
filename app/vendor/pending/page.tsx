@@ -6,12 +6,6 @@ export default function PendingPage() {
   const router = useRouter();
 
   const handleBackToLogin = () => {
-    // 🔐 Clear all local auth/session data
-    localStorage.removeItem("token");
-
-    // Optional: clear any onboarding drafts later
-    // localStorage.clear()
-
     router.replace("/auth/login");
   };
 
