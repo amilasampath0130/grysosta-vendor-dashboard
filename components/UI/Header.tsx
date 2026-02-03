@@ -1,61 +1,82 @@
-'use client'
+"use client";
 
-import { Search, Bell, Menu, LogOut } from 'lucide-react'
-import { useState, Dispatch, SetStateAction, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Search, Bell, Menu, LogOut } from "lucide-react";
+import { useState, Dispatch, SetStateAction, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface HeaderProps {
-  setOpen: Dispatch<SetStateAction<boolean>>
+  setOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 interface UserInfo {
-  email: string
-  role: string
+  email: string;
+  role: string;
 }
 
 export default function Header({ setOpen }: HeaderProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [openMenu, setOpenMenu] = useState(false)
-  const [user, setUser] = useState<UserInfo | null>(null)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [openMenu, setOpenMenu] = useState(false);
+  const [user, setUser] = useState<UserInfo | null>(null);
 
-  const router = useRouter()
+  const router = useRouter();
 
-  // 🔐 Read user from JWT
+  // 🔐 Hydrate header with current vendor info
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) return
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`,
+          {
+            credentials: "include",
+            headers: { "Cache-Control": "no-cache" },
+          },
+        );
 
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      setUser({
-        email: payload.email ?? 'vendor',
-        role: payload.role,
-      })
-    } catch {
-      setUser(null)
-    }
-  }, [])
+        if (!res.ok) {
+          setUser(null);
+          return;
+        }
+
+        const data = await res.json();
+        setUser({
+          email: data.user?.email ?? "vendor",
+          role: data.user?.role ?? "vendor",
+        });
+      } catch (error) {
+        console.error("Failed to load vendor profile", error);
+        setUser(null);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   // 🚪 Logout
-  const logout = () => {
-    localStorage.removeItem('token')
-    router.replace('/')
-  }
+  const logout = async () => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Failed to logout vendor", error);
+    } finally {
+      router.replace("/auth/login");
+      router.refresh();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
       <div className="flex items-center justify-between px-6 py-4">
         {/* LEFT */}
         <div className="flex items-center gap-4">
-          <button
-            className="md:hidden p-2"
-            onClick={() => setOpen(true)}
-          >
+          <button className="md:hidden p-2" onClick={() => setOpen(true)}>
             <Menu className="w-6 h-6 text-gray-600" />
           </button>
 
           <div className="relative max-w-md hidden sm:block">
-            <h1 className='text-zinc-950 font-bold'>Vendor dashboard</h1>
+            <h1 className="text-zinc-950 font-bold">Vendor dashboard</h1>
           </div>
         </div>
 
@@ -72,7 +93,7 @@ export default function Header({ setOpen }: HeaderProps) {
             className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"
           >
             <span className="text-white font-semibold">
-              {user?.email?.[0]?.toUpperCase() || 'A'}
+              {user?.email?.[0]?.toUpperCase() || "A"}
             </span>
           </button>
 
@@ -100,5 +121,5 @@ export default function Header({ setOpen }: HeaderProps) {
         </div>
       </div>
     </header>
-  )
+  );
 }

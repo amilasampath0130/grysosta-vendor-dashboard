@@ -1,6 +1,6 @@
 "use client";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export default function Information() {
   //personal details
@@ -26,8 +26,17 @@ export default function Information() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const emailParam = searchParams?.get("email") || "";
+    const reasonParam = searchParams?.get("reason") || "";
+    if (emailParam) setEmail(emailParam);
+    if (reasonParam) setRejectionReason(reasonParam);
+  }, [searchParams]);
 
   const handleSubmit = async () => {
     if (loading) return;
@@ -97,6 +106,11 @@ export default function Information() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
+      {rejectionReason && (
+        <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded">
+          <strong>Application rejected:</strong> {rejectionReason}
+        </div>
+      )}
       <div className="bg-white p-6 rounded shadow">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Vendor Information</h1>

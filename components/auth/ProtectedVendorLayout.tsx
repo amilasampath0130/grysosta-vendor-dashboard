@@ -14,9 +14,16 @@ export default function VendorGuard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [vendorStatus, setVendorStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const isOnboardingRoute = pathname === "/vendor/onboarding";
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (isOnboardingRoute) {
+        setIsAuthenticated(true);
+        setLoading(false);
+        return;
+      }
+
       try {
         // Check if we have the auth cookie by making an API call
         const res = await fetch(
@@ -45,7 +52,7 @@ export default function VendorGuard({
     };
 
     checkAuth();
-  }, [router, pathname]);
+  }, [router, pathname, isOnboardingRoute]);
 
   useEffect(() => {
     if (loading || !isAuthenticated || !vendorStatus) return;
@@ -72,7 +79,7 @@ export default function VendorGuard({
 
   if (loading) return <Loading />;
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isOnboardingRoute) {
     return null; // Will redirect in useEffect
   }
 

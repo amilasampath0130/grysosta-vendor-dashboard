@@ -47,6 +47,15 @@ const LoginForm = () => {
       }
 
       if (!response.ok) {
+        // If vendor was rejected, redirect to onboarding so they can resubmit
+        if (data?.vendorStatus === "REJECTED" || data?.canResubmit) {
+          const params = new URLSearchParams();
+          params.set("email", email);
+          if (data?.rejectionReason) params.set("reason", data.rejectionReason);
+          router.push(`/vendor/onboarding?${params.toString()}`);
+          return;
+        }
+
         // Handle known HTTP errors - use backend message
         throw new Error(data?.message || "Login failed.");
       }
