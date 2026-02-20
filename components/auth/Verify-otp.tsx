@@ -31,7 +31,7 @@ export default function VerifyOtpPage() {
         if (data && typeof data.msLeft === "number") {
           setMsLeft(data.msLeft);
         }
-      } catch (e) {
+      } catch {
         // ignore
       }
     };
@@ -77,12 +77,34 @@ export default function VerifyOtpPage() {
       const data = await res.json();
 
       if (data.success) {
-        // Token is now in httpOnly cookie
-        router.replace("/vendor/onboarding");
+        const profileRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`,
+          {
+            credentials: "include",
+            headers: { "Cache-Control": "no-cache" },
+          },
+        );
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          const status =
+            profileData.user?.vendorStatus ||
+            (profileData.user?.role === "vendor" ? "APPROVED" : "NEW");
+
+          if (status === "APPROVED") {
+            router.replace("/vendor/dashboard");
+          } else if (status === "PENDING") {
+            router.replace("/vendor/pending");
+          } else {
+            router.replace("/vendor/onboarding");
+          }
+        } else {
+          router.replace("/vendor/onboarding");
+        }
       } else {
         setError(data.message || "Invalid OTP");
       }
-    } catch (err) {
+    } catch {
       setError("Server error");
     } finally {
       setLoading(false);
@@ -106,15 +128,14 @@ export default function VerifyOtpPage() {
       const data = await res.json();
       if (data.success) {
         setInfo("OTP resent. Check your email.");
-        // set a reasonable msLeft if not provided
-        setMsLeft(30 * 60 * 1000);
+        setMsLeft(60 * 1000);
       } else if (data.msLeft) {
         setMsLeft(data.msLeft);
         setInfo(data.message || "Please wait before resending OTP.");
       } else {
         setInfo(data.message || "Could not resend OTP");
       }
-    } catch (e) {
+    } catch {
       setInfo("Server error");
     } finally {
       setResendLoading(false);

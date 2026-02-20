@@ -11,6 +11,8 @@ export default function CreateAdvertisement() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [advertisementType, setAdvertisementType] = useState("banner");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<{
     title?: string;
     content?: string;
@@ -80,6 +82,8 @@ export default function CreateAdvertisement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitMessage(null);
+    setSubmitError(null);
 
     if (!validateForm()) {
       return;
@@ -87,29 +91,40 @@ export default function CreateAdvertisement() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
     try {
-      // In a real application, you would upload the image and send data to your API
-      // const formData = new FormData();
-      // formData.append('title', title);
-      // formData.append('content', content);
-      // formData.append('type', advertisementType);
-      // if (image) formData.append('image', image);
+      const formData = new FormData();
+      formData.append("title", title.trim());
+      formData.append("content", content.trim());
+      formData.append("advertisementType", advertisementType);
+      if (image) {
+        formData.append("image", image);
+      }
 
-      // const response = await fetch('/api/advertisements', {
-      //   method: 'POST',
-      //   body: formData,
-      // });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements`,
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        },
+      );
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to submit advertisement");
+      }
 
-      // Show success message and redirect
-      alert("Advertisement created successfully!");
+      setSubmitMessage(
+        "Advertisement submitted successfully. It is now pending admin approval.",
+      );
       router.push("/vendor/dashboard");
     } catch (error) {
       console.error("Error creating advertisement:", error);
-      alert("Failed to create advertisement. Please try again.");
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create advertisement. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -156,6 +171,18 @@ export default function CreateAdvertisement() {
         {/* Form */}
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {submitError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submitError}
+              </div>
+            )}
+
+            {submitMessage && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                {submitMessage}
+              </div>
+            )}
+
             {/* Advertisement Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

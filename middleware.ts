@@ -13,11 +13,6 @@ export async function middleware(request: NextRequest) {
   const isPendingRoute = pathname.startsWith("/vendor/pending");
   const isPublicFlow = isOnboardingRoute || isPendingRoute;
 
-  // If already authenticated, block access to login page
-  if (token && pathname.startsWith("/auth/login")) {
-    return NextResponse.redirect(new URL("/vendor/dashboard", request.url));
-  }
-
   // Block access to protected routes when no auth cookie is present
   if (!token && isProtectedRoute && !isPublicFlow) {
     const loginUrl = new URL("/auth/login", request.url);
@@ -47,10 +42,21 @@ export async function middleware(request: NextRequest) {
     }
 
     const data = (await profileRes.json()) as {
-      user?: { vendorStatus?: string };
+      user?: { vendorStatus?: string; role?: string };
     };
 
-    const status = data.user?.vendorStatus || "NEW";
+    const status =
+      data.user?.vendorStatus || (data.user?.role === "vendor" ? "APPROVED" : "NEW");
+
+    if (pathname.startsWith("/auth/login")) {
+      if (status === "APPROVED") {
+        return NextResponse.redirect(new URL("/vendor/dashboard", request.url));
+      }
+      if (status === "PENDING") {
+        return NextResponse.redirect(new URL("/vendor/pending", request.url));
+      }
+      return NextResponse.redirect(new URL("/vendor/onboarding", request.url));
+    }
 
     if (status === "APPROVED") {
       if (isOnboardingRoute || isPendingRoute) {

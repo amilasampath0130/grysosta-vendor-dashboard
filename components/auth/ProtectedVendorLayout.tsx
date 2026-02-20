@@ -31,8 +31,11 @@ export default function VendorGuard({
         );
         if (res.ok) {
           const data = await res.json();
+          const normalizedStatus =
+            data.user?.vendorStatus ||
+            (data.user?.role === "vendor" ? "APPROVED" : "NEW");
           setIsAuthenticated(true);
-          setVendorStatus(data.user?.vendorStatus || "NEW");
+          setVendorStatus(normalizedStatus);
         } else {
           setIsAuthenticated(false);
           if (!isPublicFlow) {
@@ -40,7 +43,7 @@ export default function VendorGuard({
             return;
           }
         }
-      } catch (error) {
+      } catch {
         setIsAuthenticated(false);
         if (!isPublicFlow) {
           router.replace("/auth/login");
