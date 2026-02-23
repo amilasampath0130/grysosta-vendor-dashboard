@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 export default function PendingPage() {
   const router = useRouter();
 
-  const handleBackToLogin = () => {
+  const handleBackToLogin = () => { 
     router.replace("/auth/login");
   };
 

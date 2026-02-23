@@ -1,32 +1,67 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import {
+  User,
+  Mail,
+  Phone,
+  Building2,
+  MapPin,
+  Home,
+  Briefcase,
+  Upload,
+  X,
+  AlertCircle,
+  LogOut,
+  ArrowLeft,
+  CheckCircle,
+  FileText,
+  Store,
+  MapPinned,
+  Tag,
+  ScrollText,
+  Landmark,
+  Globe
+} from "lucide-react";
 
 export default function Information() {
-  //personal details
-  const [FirstName, setFirstName] = useState("");
-  const [middName, setMiddleName] = useState("");
-  const [LastName, setLastName] = useState("");
-  const [Address, setAddress] = useState("");
-  const [City, setCity] = useState("");
-  const [State, setState] = useState("");
-  const [ZipCode, setZipCode] = useState("");
-  //business details
-  const [businessName, setBusinessName] = useState("");
-  const [businessType, setBusinessType] = useState("");
-  const [buscategory, setBuscategory] = useState("");
-  const [businessAddress, setBusinessAddress] = useState("");
-  const [UserIDDoc, setUserIDDoc] = useState<File | null>(null);
-  const [BusinessRegDoc, setBusinessRegDoc] = useState<File | null>(null);
-  const [typeofoffering, setTypeofoffering] = useState("");
-  const [businessPhoneNumber, setBusinessPhoneNumber] = useState("");
-  //contact details
-  const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  // Personal details
+  const [formData, setFormData] = useState({
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    email: "",
+    phoneNumber: "",
+  });
 
-  const [error, setError] = useState<string | null>(null);
+  // Business details
+  const [businessData, setBusinessData] = useState({
+    businessName: "",
+    businessType: "",
+    businessCategory: "",
+    businessAddress: "",
+    businessPhoneNumber: "",
+    typeofoffering: "",
+    website: "",
+    yearEstablished: "",
+    taxId: "",
+  });
+
+  // File uploads
+  const [userIdImage, setUserIdImage] = useState<File | null>(null);
+  const [userIdPreview, setUserIdPreview] = useState<string | null>(null);
+  const [businessRegImage, setBusinessRegImage] = useState<File | null>(null);
+  const [businessRegPreview, setBusinessRegPreview] = useState<string | null>(null);
+
+  // UI states
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"personal" | "business" | "documents">("personal");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,46 +69,176 @@ export default function Information() {
   useEffect(() => {
     const emailParam = searchParams?.get("email") || "";
     const reasonParam = searchParams?.get("reason") || "";
-    if (emailParam) setEmail(emailParam);
-    if (reasonParam) setRejectionReason(reasonParam);
+    if (emailParam) {
+      setFormData(prev => ({ ...prev, email: emailParam }));
+    }
+    if (reasonParam) {
+      setRejectionReason(reasonParam);
+    }
   }, [searchParams]);
 
-  const handleSubmit = async () => {
+  const handleFormChange = (field: string, value: string, isBusiness: boolean = false) => {
+    if (isBusiness) {
+      setBusinessData(prev => ({ ...prev, [field]: value }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "id" | "business"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : "businessRegImage"]: "Please upload an image file" }));
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : "businessRegImage"]: "File size should be less than 5MB" }));
+      return;
+    }
+
+    if (type === "id") {
+      setUserIdImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUserIdPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setBusinessRegImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBusinessRegPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : "businessRegImage"]: "" }));
+  };
+
+  const removeFile = (type: "id" | "business") => {
+    if (type === "id") {
+      setUserIdImage(null);
+      setUserIdPreview(null);
+    } else {
+      setBusinessRegImage(null);
+      setBusinessRegPreview(null);
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    // Personal details validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "First name is required";
+    }
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "Last name is required";
+    }
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
+    }
+    if (!formData.city.trim()) {
+      newErrors.city = "City is required";
+    }
+    if (!formData.state.trim()) {
+      newErrors.state = "State is required";
+    }
+    if (!formData.zipCode.trim()) {
+      newErrors.zipCode = "ZIP code is required";
+    }
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!/^\d{10,}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
+      newErrors.phoneNumber = "Please enter a valid phone number";
+    }
+
+    // Business details validation
+    if (!businessData.businessName.trim()) {
+      newErrors.businessName = "Business name is required";
+    }
+    if (!businessData.businessType.trim()) {
+      newErrors.businessType = "Business type is required";
+    }
+    if (!businessData.businessCategory.trim()) {
+      newErrors.businessCategory = "Business category is required";
+    }
+    if (!businessData.businessAddress.trim()) {
+      newErrors.businessAddress = "Business address is required";
+    }
+    if (!businessData.businessPhoneNumber.trim()) {
+      newErrors.businessPhoneNumber = "Business phone number is required";
+    } else if (!/^\d{10,}$/.test(businessData.businessPhoneNumber.replace(/\D/g, ''))) {
+      newErrors.businessPhoneNumber = "Please enter a valid phone number";
+    }
+
+    // Document validation
+    if (!userIdImage) {
+      newErrors.userIdImage = "Government ID image is required";
+    }
+    if (!businessRegImage) {
+      newErrors.businessRegImage = "Business registration image is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (loading) return;
 
-    // Basic validation
-    if (!FirstName.trim() || !LastName.trim() || !businessName.trim()) {
-      setError("Please fill in all required fields");
+    if (!validateForm()) {
+      // Scroll to the first error
+      const firstError = document.querySelector(".border-red-500");
+      firstError?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     try {
+      const submitData = new FormData();
+      
+      // Append personal details
+      Object.entries(formData).forEach(([key, value]) => {
+        submitData.append(key, value);
+      });
+      
+      // Append business details
+      Object.entries(businessData).forEach(([key, value]) => {
+        submitData.append(key, value);
+      });
+      
+      // Append files
+      if (userIdImage) submitData.append("userIdImage", userIdImage);
+      if (businessRegImage) submitData.append("businessRegImage", businessRegImage);
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/submit-info`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            firstName: FirstName,
-            middleName: middName,
-            lastName: LastName,
-            address: Address,
-            city: City,
-            state: State,
-            zipCode: ZipCode,
-            businessName,
-            businessType,
-            businessCategory: buscategory,
-            businessAddress,
-            businessPhoneNumber,
-            email,
-            phoneNumber,
-          }),
-        },
+          body: submitData,
+        }
       );
 
       const data = await response.json();
@@ -81,10 +246,10 @@ export default function Information() {
       if (data.success) {
         router.push("/vendor/pending");
       } else {
-        setError(data.message || "Submission failed");
+        setErrors({ submit: data.message || "Submission failed" });
       }
-    } catch (err: any) {
-      setError("Server error. Please try again.");
+    } catch (err) {
+      setErrors({ submit: "Server error. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -96,194 +261,623 @@ export default function Information() {
         method: "POST",
         credentials: "include",
       });
-      router.push("/auth/login");
     } catch (error) {
       console.error("Logout failed", error);
-      // Still redirect
+    } finally {
       router.push("/auth/login");
     }
   };
 
-  return (
-    <div className="grid grid-cols-1 gap-6">
-      {rejectionReason && (
-        <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded">
-          <strong>Application rejected:</strong> {rejectionReason}
-        </div>
-      )}
-      <div className="bg-white p-6 rounded shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">Vendor Information</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-          >
-            Logout
-          </button>
-        </div>
-        <form className="space-y-4">
-          <p className="text-gray-600 mb-2 font-bold">
-            please provide personal details to continue.
-          </p>
-          <div className=" grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-2">
-            <input
-              type="text"
-              value={FirstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="First Name"
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-            <input
-              type="text"
-              value={middName}
-              onChange={(e) => setMiddleName(e.target.value)}
-              placeholder="Middle Name"
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-            <input
-              type="text"
-              value={LastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Last Name"
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-          </div>
-          <input
-            type="text"
-            value={Address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Address"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <div className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-2">
-            <input
-              type="text"
-              value={City}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City"
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-            <input
-              type="text"
-              value={State}
-              onChange={(e) => setState(e.target.value)}
-              placeholder="State/Province/Region"
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-            <input
-              type="text"
-              value={ZipCode}
-              onChange={(e) => setZipCode(e.target.value)}
-              placeholder="ZIP/Postal Code"
-              className="w-full p-2 border border-gray-300 rounded "
-            />
-          </div>
-          <p className="text-gray-600 mb-6 font-bold">
-            Please provide your business details to continue.
-          </p>
-          <input
-            type="text"
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            placeholder="Business Name"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <input
-            type="text"
-            value={businessType}
-            onChange={(e) => setBusinessType(e.target.value)}
-            placeholder="Business Type"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <input
-            type="text"
-            value={buscategory}
-            onChange={(e) => setBuscategory(e.target.value)}
-            placeholder="Business Category"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <textarea
-            value={businessAddress}
-            onChange={(e) => setBusinessAddress(e.target.value)}
-            placeholder="Business Address"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          {/* <input
-            type="text"
-            value={typeofoffering}
-            onChange={(e) => setTypeofoffering(e.target.value)}
-            placeholder="Type of Offering"
-            className="w-full p-2 border border-gray-300 rounded"
-          /> */}
+  const businessTypes = [
+    "Retail",
+    "Restaurant",
+    "Service Provider",
+    "Manufacturing",
+    "Wholesale",
+    "E-commerce",
+    "Professional Services",
+    "Healthcare",
+    "Education",
+    "Entertainment",
+  ];
 
-          <input
-            type="number"
-            value={businessPhoneNumber}
-            onChange={(e) => setBusinessPhoneNumber(e.target.value)}
-            placeholder="Business Phone Number"
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-          <div className="grid lg:grid-cols-1 md:grid-cols-1 sm:grid-cols-1 gap-2">
-            <p className="flex items-start justify-start text-start text-gray-700 font-bold">
-              Upload a valid government-issued ID (e.g., passport, driver's
-              license).
-            </p>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  setUserIDDoc(e.target.files[0]);
-                }
-              }}
-              className="w-full p-2 border-2 border-red-400 rounded"
-            />
-            <p className="flex items-start justify-start text-start text-gray-700 font-bold">
-              Upload a valid business registration document (e.g., business
-              license, tax registration).
-            </p>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  setBusinessRegDoc(e.target.files[0]);
-                }
-              }}
-              className="w-full p-2 border-2 border-red-400 rounded"
-            />
-          </div>
-          <p className="text-gray-600 mb-6 font-bold">
-            Please provide your contact details to continue.
-          </p>
-          <div className="grid lg:grid-cols-2 md:grid-cols-2 sm:grid-cols-1 gap-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address"
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-            <input
-              type="number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Phone Number"
-              className="w-full p-2 border border-gray-300 rounded"
-            />
-          </div>
-          <div className="flex justify-center">
+  const businessCategories = [
+    "Food & Beverage",
+    "Fashion & Apparel",
+    "Electronics",
+    "Home & Garden",
+    "Health & Beauty",
+    "Automotive",
+    "Sports & Recreation",
+    "Books & Media",
+    "Toys & Hobbies",
+    "Professional Services",
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Vendor Registration</h1>
+              <p className="text-gray-600 mt-2">
+                Complete your profile to start selling on our platform
+              </p>
+            </div>
             <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="bg-green-600 text-white px-4 py-2 rounded mt-4 hover:bg-green-700 transition-colors duration-200 ease-in-out focus:outline-none focus:ring focus:ring-green-500 focus:ring-opacity-50 active:bg-green-800 active:text-white active:shadow-inner active:ring active:ring-green-50 active:ring-opacity-50 disabled:bg-gray-400 disabled:text-gray-70 disabled:cursor-not-allowered disabled:hover:bg-gray-40 disabled:hover:text-gray disabled:hover:cursor-not-allowered disabled:focus:outline-none disabled:focus:ring disabled:focus:ring-green disabled:focus:ring-opacity-disabled:focus:border-transparent disabled:focus:border-transparent "
+              onClick={handleLogout}
+              className="flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              {loading ? "Submitting..." : "Submit for Review"}
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
             </button>
           </div>
-        </form>
+
+          {/* Progress Steps */}
+          <div className="mt-8 flex items-center justify-center">
+            <div className="flex items-center w-full max-w-2xl">
+              <Step 
+                number={1} 
+                title="Personal" 
+                active={activeTab === "personal"} 
+                completed={activeTab !== "personal" && !!formData.firstName && !!formData.lastName}
+              />
+              <div className={`flex-1 h-1 mx-2 ${activeTab !== "personal" && !!formData.firstName ? "bg-emerald-500" : "bg-gray-200"}`} />
+              <Step 
+                number={2} 
+                title="Business" 
+                active={activeTab === "business"} 
+                completed={activeTab !== "business" && !!businessData.businessName}
+              />
+              <div className={`flex-1 h-1 mx-2 ${activeTab !== "business" && !!businessData.businessName ? "bg-emerald-500" : "bg-gray-200"}`} />
+              <Step 
+                number={3} 
+                title="Documents" 
+                active={activeTab === "documents"} 
+                completed={activeTab !== "documents" && !!userIdImage && !!businessRegImage}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Rejection Banner */}
+        {rejectionReason && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3" />
+              <div>
+                <h3 className="font-medium text-red-800">Application Previously Rejected</h3>
+                <p className="text-red-700 mt-1">Reason: {rejectionReason}</p>
+                <p className="text-red-600 text-sm mt-2">
+                  Please update your information based on the feedback above.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Form */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          {/* Tab Navigation */}
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <TabButton
+                active={activeTab === "personal"}
+                onClick={() => setActiveTab("personal")}
+                icon={<User className="w-5 h-5" />}
+                label="Personal Details"
+              />
+              <TabButton
+                active={activeTab === "business"}
+                onClick={() => setActiveTab("business")}
+                icon={<Building2 className="w-5 h-5" />}
+                label="Business Details"
+              />
+              <TabButton
+                active={activeTab === "documents"}
+                onClick={() => setActiveTab("documents")}
+                icon={<FileText className="w-5 h-5" />}
+                label="Documents"
+              />
+            </nav>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 md:p-8">
+            {/* Personal Details Tab */}
+            {activeTab === "personal" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Personal Information</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <InputField
+                      label="First Name *"
+                      value={formData.firstName}
+                      onChange={(value) => handleFormChange("firstName", value)}
+                      error={errors.firstName}
+                      icon={<User className="w-5 h-5" />}
+                      placeholder="John"
+                    />
+                    <InputField
+                      label="Middle Name"
+                      value={formData.middleName}
+                      onChange={(value) => handleFormChange("middleName", value)}
+                      icon={<User className="w-5 h-5" />}
+                      placeholder="(Optional)"
+                    />
+                    <InputField
+                      label="Last Name *"
+                      value={formData.lastName}
+                      onChange={(value) => handleFormChange("lastName", value)}
+                      error={errors.lastName}
+                      icon={<User className="w-5 h-5" />}
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Address Information</h2>
+                  <div className="space-y-4">
+                    <InputField
+                      label="Street Address *"
+                      value={formData.address}
+                      onChange={(value) => handleFormChange("address", value)}
+                      error={errors.address}
+                      icon={<Home className="w-5 h-5" />}
+                      placeholder="123 Main St"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <InputField
+                        label="City *"
+                        value={formData.city}
+                        onChange={(value) => handleFormChange("city", value)}
+                        error={errors.city}
+                        icon={<MapPin className="w-5 h-5" />}
+                        placeholder="New York"
+                      />
+                      <InputField
+                        label="State/Province *"
+                        value={formData.state}
+                        onChange={(value) => handleFormChange("state", value)}
+                        error={errors.state}
+                        icon={<MapPinned className="w-5 h-5" />}
+                        placeholder="NY"
+                      />
+                      <InputField
+                        label="ZIP Code *"
+                        value={formData.zipCode}
+                        onChange={(value) => handleFormChange("zipCode", value)}
+                        error={errors.zipCode}
+                        icon={<Tag className="w-5 h-5" />}
+                        placeholder="10001"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Contact Information</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField
+                      label="Email Address *"
+                      type="email"
+                      value={formData.email}
+                      onChange={(value) => handleFormChange("email", value)}
+                      error={errors.email}
+                      icon={<Mail className="w-5 h-5" />}
+                      placeholder="john@example.com"
+                    />
+                    <InputField
+                      label="Phone Number *"
+                      type="tel"
+                      value={formData.phoneNumber}
+                      onChange={(value) => handleFormChange("phoneNumber", value)}
+                      error={errors.phoneNumber}
+                      icon={<Phone className="w-5 h-5" />}
+                      placeholder="+1 234 567 8900"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("business")}
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    Next: Business Details
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Business Details Tab */}
+            {activeTab === "business" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Business Information</h2>
+                  <div className="space-y-4">
+                    <InputField
+                      label="Business Name *"
+                      value={businessData.businessName}
+                      onChange={(value) => handleFormChange("businessName", value, true)}
+                      error={errors.businessName}
+                      icon={<Store className="w-5 h-5" />}
+                      placeholder="Acme Inc."
+                    />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <SelectField
+                        label="Business Type *"
+                        value={businessData.businessType}
+                        onChange={(value) => handleFormChange("businessType", value, true)}
+                        error={errors.businessType}
+                        icon={<Briefcase className="w-5 h-5" />}
+                        options={businessTypes}
+                      />
+                      <SelectField
+                        label="Business Category *"
+                        value={businessData.businessCategory}
+                        onChange={(value) => handleFormChange("businessCategory", value, true)}
+                        error={errors.businessCategory}
+                        icon={<Globe className="w-5 h-5" />}
+                        options={businessCategories}
+                      />
+                    </div>
+
+                    <InputField
+                      label="Business Address *"
+                      value={businessData.businessAddress}
+                      onChange={(value) => handleFormChange("businessAddress", value, true)}
+                      error={errors.businessAddress}
+                      icon={<MapPin className="w-5 h-5" />}
+                      placeholder="456 Business Ave, Suite 100"
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <InputField
+                        label="Business Phone *"
+                        type="tel"
+                        value={businessData.businessPhoneNumber}
+                        onChange={(value) => handleFormChange("businessPhoneNumber", value, true)}
+                        error={errors.businessPhoneNumber}
+                        icon={<Phone className="w-5 h-5" />}
+                        placeholder="+1 234 567 8900"
+                      />
+                      <InputField
+                        label="Website"
+                        value={businessData.website}
+                        onChange={(value) => handleFormChange("website", value, true)}
+                        icon={<Globe className="w-5 h-5" />}
+                        placeholder="https://example.com"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <InputField
+                        label="Year Established"
+                        type="number"
+                        value={businessData.yearEstablished}
+                        onChange={(value) => handleFormChange("yearEstablished", value, true)}
+                        icon={<Landmark className="w-5 h-5" />}
+                        placeholder="2020"
+                      />
+                      <InputField
+                        label="Tax ID / EIN"
+                        value={businessData.taxId}
+                        onChange={(value) => handleFormChange("taxId", value, true)}
+                        icon={<ScrollText className="w-5 h-5" />}
+                        placeholder="XX-XXXXXXX"
+                      />
+                    </div>
+
+                    <InputField
+                      label="Type of Offering"
+                      value={businessData.typeofoffering}
+                      onChange={(value) => handleFormChange("typeofoffering", value, true)}
+                      icon={<Tag className="w-5 h-5" />}
+                      placeholder="Products, Services, etc."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("personal")}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("documents")}
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    Next: Documents
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Documents Tab */}
+            {activeTab === "documents" && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Required Documents</h2>
+                  <p className="text-gray-600 mb-6">
+                    Please upload clear, legible images of the following documents. 
+                    Accepted formats: JPG, PNG, GIF (Max 5MB each)
+                  </p>
+
+                  {/* Government ID Upload */}
+                  <div className="mb-8">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Government-issued ID * 
+                      <span className="text-gray-500 text-xs ml-2">
+                        (Passport, Driver's License, or National ID)
+                      </span>
+                    </label>
+                    
+                    {userIdPreview ? (
+                      <div className="relative mb-4">
+                        <img
+                          src={userIdPreview}
+                          alt="ID Preview"
+                          className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile("id")}
+                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <FileUpload
+                        onChange={(e) => handleFileChange(e, "id")}
+                        error={errors.userIdImage}
+                      />
+                    )}
+                  </div>
+
+                  {/* Business Registration Upload */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Business Registration Document * 
+                      <span className="text-gray-500 text-xs ml-2">
+                        (Business License, Tax Registration, or Incorporation Certificate)
+                      </span>
+                    </label>
+                    
+                    {businessRegPreview ? (
+                      <div className="relative mb-4">
+                        <img
+                          src={businessRegPreview}
+                          alt="Business Registration Preview"
+                          className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile("business")}
+                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <FileUpload
+                        onChange={(e) => handleFileChange(e, "business")}
+                        error={errors.businessRegImage}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("business")}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-8 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Submitting...
+                      </>
+                    ) : (
+                      "Submit for Review"
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Global Error */}
+            {errors.submit && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{errors.submit}</p>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Help Text */}
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3 " />
+            <div>
+              <h3 className="font-medium text-blue-800">Why we need this information</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                We collect this information to verify your identity and business legitimacy. 
+                All documents are securely stored and handled in compliance with data protection regulations.
+                Your information will only be used for verification purposes and won't be shared publicly.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+// Helper Components
+const Step = ({ number, title, active, completed }: { number: number; title: string; active: boolean; completed: boolean }) => (
+  <div className="flex flex-col items-center">
+    <div className={`
+      w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm
+      ${active ? "bg-emerald-600 text-white" : completed ? "bg-emerald-100 text-emerald-600" : "bg-gray-200 text-gray-600"}
+    `}>
+      {completed ? <CheckCircle className="w-4 h-4" /> : number}
+    </div>
+    <span className="text-xs mt-1 text-gray-600">{title}</span>
+  </div>
+);
+
+const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`
+      flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium text-sm
+      border-b-2 transition-colors
+      ${active 
+        ? "border-emerald-500 text-emerald-600" 
+        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+      }
+    `}
+  >
+    {icon}
+    {label}
+  </button>
+);
+
+const InputField = ({ 
+  label, 
+  value, 
+  onChange, 
+  error, 
+  icon, 
+  type = "text", 
+  placeholder 
+}: { 
+  label: string; 
+  value: string; 
+  onChange: (value: string) => void; 
+  error?: string; 
+  icon?: React.ReactNode; 
+  type?: string; 
+  placeholder?: string;
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <div className="relative">
+      {icon && (
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+          {icon}
+        </div>
+      )}
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`
+          w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-2 border rounded-lg
+          focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+          transition-colors
+          ${error ? "border-red-500" : "border-gray-300"}
+        `}
+        placeholder={placeholder}
+      />
+    </div>
+    {error && (
+      <p className="mt-1 text-sm text-red-600">{error}</p>
+    )}
+  </div>
+);
+
+const SelectField = ({ 
+  label, 
+  value, 
+  onChange, 
+  error, 
+  icon, 
+  options 
+}: { 
+  label: string; 
+  value: string; 
+  onChange: (value: string) => void; 
+  error?: string; 
+  icon?: React.ReactNode; 
+  options: string[];
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <div className="relative">
+      {icon && (
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+          {icon}
+        </div>
+      )}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`
+          w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-2 border rounded-lg
+          focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+          transition-colors appearance-none bg-white
+          ${error ? "border-red-500" : "border-gray-300"}
+        `}
+      >
+        <option value="">Select...</option>
+        {options.map(option => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </div>
+    {error && (
+      <p className="mt-1 text-sm text-red-600">{error}</p>
+    )}
+  </div>
+);
+
+const FileUpload = ({ onChange, error }: { onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string }) => (
+  <div>
+    <label className={`
+      block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+      transition-colors hover:border-emerald-400 hover:bg-emerald-50
+      ${error ? "border-red-500" : "border-gray-300"}
+    `}>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={onChange}
+        className="hidden"
+      />
+      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <div className="text-gray-600">
+        <span className="font-medium text-emerald-600">Click to upload</span> or drag and drop
+      </div>
+      <div className="text-sm text-gray-500 mt-2">
+        PNG, JPG, GIF up to 5MB
+      </div>
+    </label>
+    {error && (
+      <p className="mt-2 text-sm text-red-600">{error}</p>
+    )}
+  </div>
+);
