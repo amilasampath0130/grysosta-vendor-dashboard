@@ -162,7 +162,7 @@ const Dashboard = () => {
       description: "Review your active offers and advertisements",
       icon: <BiSolidOffer className="w-10 h-10" />,
       color: "emerald" as const,
-      href: "/vendor/dashboard/offers",
+      href: "/vendor/offers",
     },
   ];
 

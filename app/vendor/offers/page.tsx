@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Advertisement = {
   _id: string;
@@ -8,8 +9,11 @@ type Advertisement = {
   content: string;
   advertisementType: "banner" | "sidebar" | "popup";
   imageUrl: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  startDate: string;
+  endDate: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "STOPPED";
   reviewNote?: string;
+  stopNote?: string;
   createdAt: string;
 };
 
@@ -17,13 +21,20 @@ const statusClassMap: Record<Advertisement["status"], string> = {
   PENDING: "bg-yellow-100 text-yellow-700",
   APPROVED: "bg-emerald-100 text-emerald-700",
   REJECTED: "bg-red-100 text-red-700",
+  STOPPED: "bg-gray-100 text-gray-700",
+};
+
+const formatDate = (value?: string) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? "—" : date.toLocaleDateString();
 };
 
 export default function Offers() {
+  const router = useRouter();
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   const fetchAds = async () => {
     setLoading(true);
@@ -59,34 +70,8 @@ export default function Offers() {
     fetchAds();
   }, []);
 
-  const resubmitAdvertisement = async (advertisementId: string) => {
-    setBusyId(advertisementId);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/resubmit/${advertisementId}`,
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Failed to resubmit advertisement");
-      }
-
-      await fetchAds();
-    } catch (resubmitError) {
-      setError(
-        resubmitError instanceof Error
-          ? resubmitError.message
-          : "Failed to resubmit advertisement",
-      );
-    } finally {
-      setBusyId(null);
-    }
+  const goToEdit = (advertisementId: string) => {
+    router.push(`/vendor/advertisements/${advertisementId}/edit`);
   };
 
   return (
@@ -135,6 +120,9 @@ export default function Offers() {
                       {new Date(ad.createdAt).toLocaleDateString()} •{" "}
                       {ad.advertisementType}
                     </p>
+                    <p className="text-xs text-gray-500">
+                      Schedule: {formatDate(ad.startDate)} — {formatDate(ad.endDate)}
+                    </p>
                   </div>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassMap[ad.status]}`}
@@ -145,20 +133,28 @@ export default function Offers() {
 
                 <p className="text-sm text-gray-700">{ad.content}</p>
 
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goToEdit(ad._id)}
+                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    Edit
+                  </button>
+                </div>
+
                 {ad.status === "REJECTED" && (
                   <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-3">
                     <p className="text-sm text-red-700">
                       <span className="font-medium">Reason:</span>{" "}
                       {ad.reviewNote || "No reason was provided."}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => resubmitAdvertisement(ad._id)}
-                      disabled={busyId === ad._id}
-                      className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {busyId === ad._id ? "Resubmitting..." : "Submit Again"}
-                    </button>
+                  </div>
+                )}
+
+                {ad.status === "STOPPED" && ad.stopNote && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                    <span className="font-medium">Stopped:</span> {ad.stopNote}
                   </div>
                 )}
               </div>

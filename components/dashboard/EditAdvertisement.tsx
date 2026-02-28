@@ -1,20 +1,55 @@
 "use client";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Upload, X, ArrowLeft } from "lucide-react";
 
-export default function CreateAdvertisement() {
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Upload, X } from "lucide-react";
+
+type Advertisement = {
+  _id: string;
+  title: string;
+  content: string;
+  advertisementType: "banner" | "sidebar" | "popup";
+  startDate: string;
+  endDate: string;
+  imageUrl: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "STOPPED";
+  reviewNote?: string;
+  stopNote?: string;
+};
+
+const toDateInputValue = (value: string) => {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+};
+
+export default function EditAdvertisement() {
   const router = useRouter();
+  const params = useParams<{ advertisementId: string }>();
+  const advertisementId = useMemo(
+    () => String(params?.advertisementId || ""),
+    [params],
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [advertisementType, setAdvertisementType] = useState<
+    Advertisement["advertisementType"]
+  >("banner");
+
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [advertisementType, setAdvertisementType] = useState("banner");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
   const [errors, setErrors] = useState<{
     title?: string;
     content?: string;
@@ -23,37 +58,70 @@ export default function CreateAdvertisement() {
     image?: string;
   }>({});
 
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setLoadError(null);
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/${advertisementId}`,
+          {
+            credentials: "include",
+            headers: { "Cache-Control": "no-cache" },
+          },
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to load advertisement");
+        }
+
+        const ad: Advertisement = data.advertisement;
+        setTitle(ad.title || "");
+        setContent(ad.content || "");
+        setAdvertisementType(ad.advertisementType);
+        setStartDate(toDateInputValue(ad.startDate));
+        setEndDate(toDateInputValue(ad.endDate));
+        setExistingImageUrl(ad.imageUrl || null);
+        setImage(null);
+        setImagePreview(null);
+      } catch (error) {
+        setLoadError(
+          error instanceof Error ? error.message : "Failed to load advertisement",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (advertisementId) void load();
+  }, [advertisementId]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        setErrors((prev) => ({
-          ...prev,
-          image: "Please upload an image file",
-        }));
-        return;
-      }
+    if (!file) return;
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors((prev) => ({
-          ...prev,
-          image: "Image size should be less than 5MB",
-        }));
-        return;
-      }
-
-      setImage(file);
-      setErrors((prev) => ({ ...prev, image: undefined }));
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({ ...prev, image: "Please upload an image file" }));
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({
+        ...prev,
+        image: "Image size should be less than 5MB",
+      }));
+      return;
+    }
+
+    setImage(file);
+    setErrors((prev) => ({ ...prev, image: undefined }));
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
@@ -76,10 +144,6 @@ export default function CreateAdvertisement() {
       newErrors.content = "Content must be at least 20 characters";
     }
 
-    if (!image) {
-      newErrors.image = "Please upload an image";
-    }
-
     if (!startDate) {
       newErrors.startDate = "Start date is required";
     }
@@ -91,15 +155,15 @@ export default function CreateAdvertisement() {
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      if (isNaN(start.getTime())) {
-        newErrors.startDate = "Invalid start date";
-      }
-      if (isNaN(end.getTime())) {
-        newErrors.endDate = "Invalid end date";
-      }
+      if (isNaN(start.getTime())) newErrors.startDate = "Invalid start date";
+      if (isNaN(end.getTime())) newErrors.endDate = "Invalid end date";
       if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end < start) {
         newErrors.endDate = "End date must be the same as or after start date";
       }
+    }
+
+    if (!existingImageUrl && !image) {
+      newErrors.image = "Please upload an image";
     }
 
     setErrors(newErrors);
@@ -111,9 +175,7 @@ export default function CreateAdvertisement() {
     setSubmitMessage(null);
     setSubmitError(null);
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
@@ -124,14 +186,12 @@ export default function CreateAdvertisement() {
       formData.append("advertisementType", advertisementType);
       formData.append("startDate", startDate);
       formData.append("endDate", endDate);
-      if (image) {
-        formData.append("image", image);
-      }
+      if (image) formData.append("image", image);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/${advertisementId}`,
         {
-          method: "POST",
+          method: "PATCH",
           credentials: "include",
           body: formData,
         },
@@ -139,19 +199,18 @@ export default function CreateAdvertisement() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.message || "Failed to submit advertisement");
+        throw new Error(data?.message || "Failed to update advertisement");
       }
 
       setSubmitMessage(
-        "Advertisement submitted successfully. It is now pending admin approval.",
+        "Advertisement updated successfully and sent for admin approval.",
       );
-      router.push("/vendor/dashboard");
+      router.push("/vendor/offers");
     } catch (error) {
-      console.error("Error creating advertisement:", error);
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "Failed to create advertisement. Please try again.",
+          : "Failed to update advertisement. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -159,44 +218,51 @@ export default function CreateAdvertisement() {
   };
 
   const handleCancel = () => {
-    if (title || content || image) {
-      const confirm = window.confirm(
-        "You have unsaved changes. Are you sure you want to leave?",
-      );
-      if (confirm) {
-        router.back();
-      }
-    } else {
-      router.back();
-    }
+    if (isSubmitting) return;
+    router.back();
   };
+
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-600">
+        Loading advertisement...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {loadError}
+        </div>
+        <button
+          onClick={() => router.back()}
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={handleCancel}
             className="flex items-center text-gray-600 hover:text-gray-800 mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
+            Back
           </button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Create Advertisement
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Promote your business to a wider audience with targeted
-                advertisements
-              </p>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900">Edit Advertisement</h1>
+          <p className="text-gray-600 mt-2">
+            Editing will submit your advertisement for admin re-approval.
+          </p>
         </div>
 
-        {/* Form */}
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {submitError && (
@@ -211,7 +277,6 @@ export default function CreateAdvertisement() {
               </div>
             )}
 
-            {/* Advertisement Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Advertisement Title *
@@ -226,7 +291,6 @@ export default function CreateAdvertisement() {
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                   errors.title ? "border-red-500" : "border-gray-300"
                 }`}
-                placeholder="Enter a compelling title for your advertisement"
                 disabled={isSubmitting}
               />
               {errors.title && (
@@ -234,7 +298,6 @@ export default function CreateAdvertisement() {
               )}
             </div>
 
-            {/* Content */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Content *
@@ -249,7 +312,6 @@ export default function CreateAdvertisement() {
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                   errors.content ? "border-red-500" : "border-gray-300"
                 }`}
-                placeholder="Describe your advertisement in detail..."
                 disabled={isSubmitting}
               />
               <div className="flex justify-between mt-2">
@@ -262,17 +324,18 @@ export default function CreateAdvertisement() {
               </div>
             </div>
 
-            {/* Advertisement Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Advertisement Type *
               </label>
               <div className="grid grid-cols-3 gap-3">
-                {[
-                  { value: "banner", label: "Banner", desc: "Header/Footer" },
-                  { value: "sidebar", label: "Sidebar", desc: "Side panel" },
-                  { value: "popup", label: "Popup", desc: "Modal window" },
-                ].map((type) => (
+                {(
+                  [
+                    { value: "banner", label: "Banner", desc: "Header/Footer" },
+                    { value: "sidebar", label: "Sidebar", desc: "Side panel" },
+                    { value: "popup", label: "Popup", desc: "Modal window" },
+                  ] as const
+                ).map((type) => (
                   <button
                     key={type.value}
                     type="button"
@@ -284,18 +347,13 @@ export default function CreateAdvertisement() {
                     }`}
                     disabled={isSubmitting}
                   >
-                    <div className="font-medium text-gray-900">
-                      {type.label}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {type.desc}
-                    </div>
+                    <div className="font-medium text-gray-900">{type.label}</div>
+                    <div className="text-xs text-gray-500 mt-1">{type.desc}</div>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Schedule */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -340,68 +398,62 @@ export default function CreateAdvertisement() {
               </div>
             </div>
 
-            {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Image *
+                Upload Image
               </label>
 
-              {imagePreview ? (
+              {(imagePreview || existingImageUrl) && (
                 <div className="relative">
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                     <img
-                      src={imagePreview}
+                      src={imagePreview || existingImageUrl || ""}
                       alt="Preview"
                       className="w-full h-48 object-cover rounded-lg"
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                    className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                    disabled={isSubmitting}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    {image?.name} ({(image?.size || 0) / 1024} KB)
-                  </p>
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      disabled={isSubmitting}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  {image && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      {image.name} ({Math.round(image.size / 1024)} KB)
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <label
-                  className={`
-                  block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-                  hover:border-blue-400 hover:bg-blue-50
-                  ${errors.image ? "border-red-500" : "border-gray-300"}
-                  ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
-                `}
-                >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                    disabled={isSubmitting}
-                  />
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <div className="text-gray-600">
-                    <span className="font-medium text-blue-600">
-                      Click to upload
-                    </span>{" "}
-                    or drag and drop
-                  </div>
-                  <div className="text-sm text-gray-500 mt-2">
-                    PNG, JPG, GIF up to 5MB
-                  </div>
-                </label>
               )}
+
+              <label
+                className={`mt-3 block border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50 ${
+                  errors.image ? "border-red-500" : "border-gray-300"
+                } ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  disabled={isSubmitting}
+                />
+                <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                <div className="text-gray-600">
+                  <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
+                </div>
+                <div className="text-sm text-gray-500 mt-2">PNG, JPG, GIF up to 5MB</div>
+              </label>
 
               {errors.image && (
                 <p className="mt-2 text-sm text-red-600">{errors.image}</p>
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200">
               <button
                 type="button"
@@ -419,33 +471,14 @@ export default function CreateAdvertisement() {
                 {isSubmitting ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Creating...
+                    Saving...
                   </>
                 ) : (
-                  "Submit Advertisement"
+                  "Save Changes"
                 )}
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Help Text */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-medium text-blue-800 mb-2">
-            Tips for effective advertisements:
-          </h3>
-          <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-            <li>Use clear, high-quality images that represent your business</li>
-            <li>Write compelling titles that grab attention</li>
-            <li>Include a clear call-to-action in your content</li>
-            <li>
-              Choose the advertisement type that best fits your campaign goals
-            </li>
-            <li>
-              Banner ads work best for general awareness, sidebar for detailed
-              offers, popup for promotions
-            </li>
-          </ul>
         </div>
       </div>
     </div>
