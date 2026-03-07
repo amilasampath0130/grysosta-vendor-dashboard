@@ -23,6 +23,12 @@ export default function CreateAdvertisement() {
     image?: string;
   }>({});
 
+  const todayInputValue = (() => {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  })();
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -138,14 +144,88 @@ export default function CreateAdvertisement() {
       );
 
       const data = await response.json();
+
+      // If vendor already has a pending advertisement, do not create another.
+      if (response.status === 409) {
+        const existingId = String(data?.advertisement?._id || "").trim();
+        const existingIsPaid = data?.advertisement?.isPaid;
+
+        if (existingId && existingIsPaid === false) {
+          setSubmitMessage(
+            "You already have a pending advertisement. Redirecting to payment...",
+          );
+
+          const checkoutRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/payment/create-advertisement-checkout-session`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ advertisementId: existingId }),
+            },
+          );
+          const checkoutData = await checkoutRes.json();
+
+          if (!checkoutRes.ok) {
+            throw new Error(
+              checkoutData?.message ||
+                "Failed to start payment. Please try again.",
+            );
+          }
+
+          const url = String(checkoutData?.url || "").trim();
+          if (!url) {
+            throw new Error("Payment session created but missing checkout url");
+          }
+
+          window.location.href = url;
+          return;
+        }
+
+        setSubmitError(
+          data?.message ||
+            "You already have a pending advertisement awaiting admin approval.",
+        );
+        router.push("/vendor/offers");
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data?.message || "Failed to submit advertisement");
       }
 
+      const advertisementId = String(data?.advertisement?._id || "").trim();
+      if (!advertisementId) {
+        throw new Error("Advertisement created but missing id");
+      }
+
       setSubmitMessage(
-        "Advertisement submitted successfully. It is now pending admin approval.",
+        "Advertisement created. Redirecting to secure payment to submit for approval...",
       );
-      router.push("/vendor/dashboard");
+
+      const checkoutRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payment/create-advertisement-checkout-session`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ advertisementId }),
+        },
+      );
+
+      const checkoutData = await checkoutRes.json();
+      if (!checkoutRes.ok) {
+        throw new Error(
+          checkoutData?.message || "Failed to start payment. Please try again.",
+        );
+      }
+
+      const url = String(checkoutData?.url || "").trim();
+      if (!url) {
+        throw new Error("Payment session created but missing checkout url");
+      }
+
+      window.location.href = url;
     } catch (error) {
       console.error("Error creating advertisement:", error);
       setSubmitError(
@@ -305,9 +385,14 @@ export default function CreateAdvertisement() {
                   type="date"
                   value={startDate}
                   onChange={(e) => {
-                    setStartDate(e.target.value);
+                    const next = e.target.value;
+                    setStartDate(next);
+                    if (endDate && next && endDate < next) {
+                      setEndDate(next);
+                    }
                     setErrors((prev) => ({ ...prev, startDate: undefined }));
                   }}
+                  min={todayInputValue}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                     errors.startDate ? "border-red-500" : "border-gray-300"
                   }`}
@@ -329,6 +414,7 @@ export default function CreateAdvertisement() {
                     setEndDate(e.target.value);
                     setErrors((prev) => ({ ...prev, endDate: undefined }));
                   }}
+                  min={startDate || todayInputValue}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                     errors.endDate ? "border-red-500" : "border-gray-300"
                   }`}
@@ -419,10 +505,10 @@ export default function CreateAdvertisement() {
                 {isSubmitting ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Creating...
+                    Redirecting...
                   </>
                 ) : (
-                  "Submit Advertisement"
+                  "Pay & Submit Advertisement"
                 )}
               </button>
             </div>

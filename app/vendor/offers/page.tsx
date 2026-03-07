@@ -12,6 +12,9 @@ type Advertisement = {
   startDate: string;
   endDate: string;
   status: "PENDING" | "APPROVED" | "REJECTED" | "STOPPED";
+  isPaid?: boolean;
+  paidFrom?: string;
+  paidThrough?: string;
   reviewNote?: string;
   stopNote?: string;
   createdAt: string;
@@ -35,6 +38,8 @@ export default function Offers() {
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [payingAdId, setPayingAdId] = useState<string | null>(null);
+  const [deletingAdId, setDeletingAdId] = useState<string | null>(null);
 
   const fetchAds = async () => {
     setLoading(true);
@@ -72,6 +77,78 @@ export default function Offers() {
 
   const goToEdit = (advertisementId: string) => {
     router.push(`/vendor/advertisements/${advertisementId}/edit`);
+  };
+
+  const startPayment = async (advertisementId: string) => {
+    setPayingAdId(advertisementId);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payment/create-advertisement-checkout-session`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ advertisementId }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to start payment");
+      }
+
+      const url = String(data?.url || "").trim();
+      if (!url) {
+        throw new Error("Payment session created but missing checkout url");
+      }
+
+      window.location.href = url;
+    } catch (paymentError) {
+      setError(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "Failed to start payment",
+      );
+    } finally {
+      setPayingAdId(null);
+    }
+  };
+
+  const deleteAdvertisement = async (advertisementId: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this advertisement?",
+    );
+    if (!confirmed) return;
+
+    setDeletingAdId(advertisementId);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/${advertisementId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete advertisement");
+      }
+
+      await fetchAds();
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Failed to delete advertisement",
+      );
+    } finally {
+      setDeletingAdId(null);
+    }
   };
 
   return (
@@ -124,11 +201,18 @@ export default function Offers() {
                       Schedule: {formatDate(ad.startDate)} — {formatDate(ad.endDate)}
                     </p>
                   </div>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassMap[ad.status]}`}
-                  >
-                    {ad.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassMap[ad.status]}`}
+                    >
+                      {ad.status}
+                    </span>
+                    {ad.isPaid === false && (
+                      <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-700">
+                        PAYMENT REQUIRED
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <p className="text-sm text-gray-700">{ad.content}</p>
@@ -141,6 +225,28 @@ export default function Offers() {
                   >
                     Edit
                   </button>
+
+                  {ad.isPaid === false && (
+                    <button
+                      type="button"
+                      onClick={() => startPayment(ad._id)}
+                      disabled={payingAdId === ad._id}
+                      className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {payingAdId === ad._id ? "Starting..." : "Pay for Dates"}
+                    </button>
+                  )}
+
+                  {ad.status !== "APPROVED" && (
+                    <button
+                      type="button"
+                      onClick={() => deleteAdvertisement(ad._id)}
+                      disabled={deletingAdId === ad._id}
+                      className="rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deletingAdId === ad._id ? "Deleting..." : "Delete"}
+                    </button>
+                  )}
                 </div>
 
                 {ad.status === "REJECTED" && (

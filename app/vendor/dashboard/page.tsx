@@ -1,8 +1,8 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Tag,  PlusCircle, ArrowRight } from "lucide-react";
 import { BiSolidOffer } from "react-icons/bi";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Simple reusable card component
 const DashboardCard = ({
@@ -139,6 +139,71 @@ const DashboardCard = ({
 
 // Main Dashboard Component
 const Dashboard = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [paymentBanner, setPaymentBanner] = useState<
+    { kind: "success" | "error" | "info"; message: string } | null
+  >(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id");
+
+    if (payment === "cancel") {
+      setPaymentBanner({
+        kind: "info",
+        message: "Payment cancelled. Your advertisement is saved but not submitted for approval.",
+      });
+      return;
+    }
+
+    if (payment !== "success" || !sessionId || isConfirming) return;
+
+    const confirm = async () => {
+      setIsConfirming(true);
+      setPaymentBanner({ kind: "info", message: "Confirming payment..." });
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/payment/confirm-checkout-session`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          },
+        );
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to confirm payment");
+        }
+
+        setPaymentBanner({
+          kind: "success",
+          message: "Payment confirmed. Your advertisement is now submitted for admin approval.",
+        });
+
+        // Move vendor to their ads list; remove session params from history.
+        router.replace("/vendor/offers");
+      } catch (error) {
+        setPaymentBanner({
+          kind: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to confirm payment",
+        });
+      } finally {
+        setIsConfirming(false);
+      }
+    };
+
+    confirm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const cards = [
     {
       id: 1,
@@ -175,6 +240,20 @@ const Dashboard = () => {
           Manage your business promotions and advertisements
         </p>
       </div>
+
+      {paymentBanner && (
+        <div
+          className={`mb-6 rounded-lg border px-4 py-3 text-sm ${
+            paymentBanner.kind === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : paymentBanner.kind === "error"
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-blue-200 bg-blue-50 text-blue-700"
+          }`}
+        >
+          {paymentBanner.message}
+        </div>
+      )}
 
       {/* Cards Grid */}
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 auto-rows-fr">
