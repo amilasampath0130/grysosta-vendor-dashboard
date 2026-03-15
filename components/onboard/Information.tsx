@@ -56,6 +56,8 @@ export default function Information() {
   const [userIdPreview, setUserIdPreview] = useState<string | null>(null);
   const [businessRegImage, setBusinessRegImage] = useState<File | null>(null);
   const [businessRegPreview, setBusinessRegPreview] = useState<string | null>(null);
+  const [vendorLogo, setVendorLogo] = useState<File | null>(null);
+  const [vendorLogoPreview, setVendorLogoPreview] = useState<string | null>(null);
 
   // UI states
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -89,22 +91,72 @@ export default function Information() {
     }
   };
 
-  const handleFileChange = (
+  const validateImageDimensions = (
+    file: File,
+    expectedWidth: number,
+    expectedHeight: number,
+  ) =>
+    new Promise<{ ok: true } | { ok: false; message: string }>((resolve) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+
+      img.onload = () => {
+        const w = (img as HTMLImageElement).naturalWidth;
+        const h = (img as HTMLImageElement).naturalHeight;
+        URL.revokeObjectURL(objectUrl);
+
+        if (w === expectedWidth && h === expectedHeight) {
+          resolve({ ok: true });
+          return;
+        }
+
+        resolve({
+          ok: false,
+          message: `Logo must be exactly ${expectedWidth}×${expectedHeight}px (uploaded ${w}×${h}px)`,
+        });
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve({ ok: false, message: "Could not read image dimensions" });
+      };
+
+      img.src = objectUrl;
+    });
+
+  const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    type: "id" | "business"
+    type: "id" | "business" | "logo"
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : "businessRegImage"]: "Please upload an image file" }));
+      setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : type === "business" ? "businessRegImage" : "vendorLogo"]: "Please upload an image file" }));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : "businessRegImage"]: "File size should be less than 5MB" }));
+      setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : type === "business" ? "businessRegImage" : "vendorLogo"]: "File size should be less than 5MB" }));
+      return;
+    }
+
+    if (type === "logo") {
+      const dimensionCheck = await validateImageDimensions(file, 1080, 1080);
+      if (!dimensionCheck.ok) {
+        setErrors(prev => ({ ...prev, vendorLogo: dimensionCheck.message }));
+        return;
+      }
+
+      setVendorLogo(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setVendorLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      setErrors(prev => ({ ...prev, vendorLogo: "" }));
       return;
     }
 
@@ -127,13 +179,16 @@ export default function Information() {
     setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : "businessRegImage"]: "" }));
   };
 
-  const removeFile = (type: "id" | "business") => {
+  const removeFile = (type: "id" | "business" | "logo") => {
     if (type === "id") {
       setUserIdImage(null);
       setUserIdPreview(null);
-    } else {
+    } else if (type === "business") {
       setBusinessRegImage(null);
       setBusinessRegPreview(null);
+    } else {
+      setVendorLogo(null);
+      setVendorLogoPreview(null);
     }
   };
 
@@ -196,6 +251,9 @@ export default function Information() {
     if (!businessRegImage) {
       newErrors.businessRegImage = "Business registration image is required";
     }
+    if (!vendorLogo) {
+      newErrors.vendorLogo = "Business logo (1080×1080) is required";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -231,6 +289,7 @@ export default function Information() {
       // Append files
       if (userIdImage) submitData.append("userIdImage", userIdImage);
       if (businessRegImage) submitData.append("businessRegImage", businessRegImage);
+      if (vendorLogo) submitData.append("vendorLogo", vendorLogo);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/submit-info`,
@@ -336,7 +395,7 @@ export default function Information() {
                 number={3} 
                 title="Documents" 
                 active={activeTab === "documents"} 
-                completed={activeTab !== "documents" && !!userIdImage && !!businessRegImage}
+                completed={activeTab !== "documents" && !!userIdImage && !!businessRegImage && !!vendorLogo}
               />
             </div>
           </div>
@@ -672,6 +731,38 @@ export default function Information() {
                       <FileUpload
                         onChange={(e) => handleFileChange(e, "business")}
                         error={errors.businessRegImage}
+                      />
+                    )}
+                  </div>
+
+                  {/* Vendor Logo Upload */}
+                  <div className="mt-8">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Business Logo (1080×1080) *
+                      <span className="text-gray-500 text-xs ml-2">
+                        (Used for offer display)
+                      </span>
+                    </label>
+
+                    {vendorLogoPreview ? (
+                      <div className="relative mb-4">
+                        <img
+                          src={vendorLogoPreview}
+                          alt="Vendor Logo Preview"
+                          className="w-full h-48 object-contain rounded-lg border border-gray-300 bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile("logo")}
+                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <FileUpload
+                        onChange={(e) => handleFileChange(e, "logo")}
+                        error={errors.vendorLogo}
                       />
                     )}
                   </div>

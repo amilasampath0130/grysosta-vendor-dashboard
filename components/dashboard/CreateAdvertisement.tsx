@@ -145,6 +145,18 @@ export default function CreateAdvertisement() {
 
       const data = await response.json();
 
+      if (
+        response.status === 403 &&
+        String((data as any)?.code || "").trim() === "SUBSCRIPTION_REQUIRED"
+      ) {
+        router.push(
+          `/vendor/billing?next=${encodeURIComponent(
+            "/vendor/dashboard/create-advertisement",
+          )}`,
+        );
+        return;
+      }
+
       // If vendor already has a pending advertisement, do not create another.
       if (response.status === 409) {
         const existingId = String(data?.advertisement?._id || "").trim();

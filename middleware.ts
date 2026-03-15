@@ -42,11 +42,25 @@ export async function middleware(request: NextRequest) {
     }
 
     const data = (await profileRes.json()) as {
-      user?: { vendorStatus?: string; role?: string };
+      user?: {
+        vendorStatus?: string;
+        role?: string;
+        vendorSubscription?: { status?: string };
+      };
     };
 
     const status =
       data.user?.vendorStatus || (data.user?.role === "vendor" ? "APPROVED" : "NEW");
+
+    const subscriptionStatus = String(
+      data.user?.vendorSubscription?.status || "",
+    ).trim();
+    const hasActiveSubscription =
+      subscriptionStatus === "active" || subscriptionStatus === "trialing";
+
+    const requiresSubscription =
+      pathname.startsWith("/vendor/dashboard/create-offer") ||
+      pathname.startsWith("/vendor/dashboard/create-advertisement");
 
     if (pathname.startsWith("/auth/login")) {
       if (status === "APPROVED") {
@@ -62,6 +76,13 @@ export async function middleware(request: NextRequest) {
       if (isOnboardingRoute || isPendingRoute) {
         return NextResponse.redirect(new URL("/vendor/dashboard", request.url));
       }
+
+      if (requiresSubscription && !hasActiveSubscription) {
+        const billingUrl = new URL("/vendor/billing", request.url);
+        billingUrl.searchParams.set("next", pathname);
+        return NextResponse.redirect(billingUrl);
+      }
+
       return NextResponse.next();
     }
 
