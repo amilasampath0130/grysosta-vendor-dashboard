@@ -19,6 +19,30 @@ type VendorSubscription = {
   cancelAtPeriodEnd?: boolean;
 };
 
+const PLAN_FEATURES: Record<PlanKey, string[]> = {
+  bronze: [
+    "1 location",
+    "Profile page",
+    "3 photo uploads",
+    "1 active offer",
+    "Listed in category search",
+  ],
+  silver: [
+    "Everything in Bronze",
+    "Up to 2 locations",
+    "8 photo uploads",
+    "Up to 3 active offers",
+    "Offer scheduling",
+    "Featured category placement",
+  ],
+  gold: [
+    "Everything in Silver",
+    "Unlimited locations",
+    "20 photo uploads",
+    "Unlimited offers",
+  ],
+};
+
 type VendorProfileResponse = {
   success: boolean;
   user?: {
@@ -80,6 +104,8 @@ export default function BillingPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkingOutKey, setCheckingOutKey] = useState<PlanKey | null>(null);
+  const [changingPlanKey, setChangingPlanKey] = useState<PlanKey | null>(null);
+  const [canceling, setCanceling] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
 
@@ -236,6 +262,92 @@ export default function BillingPage() {
     }
   };
 
+  const changePlan = async (planKey: PlanKey) => {
+    setChangingPlanKey(planKey);
+    setError(null);
+    setConfirmMessage(null);
+
+    try {
+      if (!apiUrl) {
+        throw new Error(
+          "NEXT_PUBLIC_API_URL is not configured (vendor_dashboard).",
+        );
+      }
+
+      if (!checkoutAvailable) {
+        throw new Error(
+          "Stripe is not available. Configure STRIPE_SECRET_KEY on the backend.",
+        );
+      }
+
+      const res = await fetch(`${apiUrl}/api/payment/change-subscription-plan`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planKey }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data?.message || "Failed to change subscription plan");
+      }
+
+      await fetchProfile();
+      setConfirmMessage("Plan updated.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to change plan");
+    } finally {
+      setChangingPlanKey(null);
+    }
+  };
+
+  const cancelSubscription = async () => {
+    const confirmed = window.confirm(
+      "Canceling your subscription will remove all your offers immediately. Do you want to continue?",
+    );
+    if (!confirmed) return;
+
+    setCanceling(true);
+    setError(null);
+    setConfirmMessage(null);
+
+    try {
+      if (!apiUrl) {
+        throw new Error(
+          "NEXT_PUBLIC_API_URL is not configured (vendor_dashboard).",
+        );
+      }
+
+      if (!checkoutAvailable) {
+        throw new Error(
+          "Stripe is not available. Configure STRIPE_SECRET_KEY on the backend.",
+        );
+      }
+
+      const res = await fetch(`${apiUrl}/api/payment/cancel-subscription`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data?.message || "Failed to cancel subscription");
+      }
+
+      await fetchProfile();
+      const removed = Number(data?.deletedOffersCount || 0);
+      setConfirmMessage(
+        removed > 0
+          ? `Subscription canceled. Removed ${removed} offers.`
+          : "Subscription canceled.",
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to cancel subscription");
+    } finally {
+      setCanceling(false);
+    }
+  };
+
   const active = isActiveStatus(profile?.status);
 
   return (
@@ -278,15 +390,28 @@ export default function BillingPage() {
             )}
           </div>
 
-          {nextPath && (
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Back
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {active && (
+              <button
+                type="button"
+                onClick={cancelSubscription}
+                disabled={canceling || !checkoutAvailable}
+                className="rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {canceling ? "Canceling..." : "Cancel subscription"}
+              </button>
+            )}
+
+            {nextPath && (
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Back
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -304,6 +429,8 @@ export default function BillingPage() {
             const isCurrent =
               active && profile?.planKey && profile.planKey === plan.key;
 
+            const canSwitch = active && !isCurrent;
+
             return (
               <div
                 key={plan.key}
@@ -318,26 +445,45 @@ export default function BillingPage() {
                   </p>
                 </div>
 
+                <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                  {PLAN_FEATURES[plan.key].map((text) => (
+                    <li key={text}>{text}</li>
+                  ))}
+                </ul>
+
                 <div className="mt-4">
                   <button
                     type="button"
-                    disabled={active || !checkoutAvailable}
-                    onClick={() => startCheckout(plan.key)}
+                    disabled={
+                      (!checkoutAvailable && !isCurrent) ||
+                      checkingOutKey === plan.key ||
+                      changingPlanKey === plan.key ||
+                      isCurrent
+                    }
+                    onClick={() =>
+                      active
+                        ? canSwitch
+                          ? changePlan(plan.key)
+                          : undefined
+                        : startCheckout(plan.key)
+                    }
                     className={`w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                      active || !checkoutAvailable
+                      isCurrent || !checkoutAvailable
                         ? "cursor-not-allowed bg-gray-100 text-gray-500"
                         : "bg-emerald-600 text-white hover:bg-emerald-700"
                     }`}
                   >
-                    {active
-                      ? isCurrent
-                        ? "Active"
-                        : "Subscription active"
+                    {isCurrent
+                      ? "Current plan"
                       : !checkoutAvailable
                         ? "Checkout unavailable"
-                      : checkingOutKey === plan.key
-                        ? "Redirecting..."
-                        : "Subscribe"}
+                        : active
+                          ? changingPlanKey === plan.key
+                            ? "Switching..."
+                            : "Switch to this plan"
+                          : checkingOutKey === plan.key
+                            ? "Redirecting..."
+                            : "Subscribe"}
                   </button>
                 </div>
               </div>

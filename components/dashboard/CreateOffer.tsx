@@ -156,25 +156,55 @@ export default function CreateOffer() {
     setIsSubmitting(true);
 
     try {
-      // In a real application, you would upload the image and send data to your API
-      // const formDataToSend = new FormData();
-      // Object.entries(formData).forEach(([key, value]) => {
-      //   if (Array.isArray(value)) {
-      //     formDataToSend.append(key, JSON.stringify(value));
-      //   } else {
-      //     formDataToSend.append(key, value.toString());
-      //   }
-      // });
-      // if (image) formDataToSend.append('image', image);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error(
+          "NEXT_PUBLIC_API_URL is not configured (vendor_dashboard).",
+        );
+      }
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const formDataToSend = new FormData();
+      formDataToSend.append("title", formData.title);
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("offerType", formData.offerType);
+      formDataToSend.append("discountValue", String(formData.discountValue));
+      formDataToSend.append("location", formData.location);
+      formDataToSend.append("activeDays", JSON.stringify(formData.activeDays));
+      formDataToSend.append("validUntil", formData.validUntil);
+      formDataToSend.append("redemptionLimit", formData.redemptionLimit);
+      if (image) {
+        formDataToSend.append("image", image);
+      }
 
-      alert("Offer created successfully!");
-      router.push("/vendor/dashboard");
+      const response = await fetch(`${apiUrl}/api/offers`, {
+        method: "POST",
+        credentials: "include",
+        body: formDataToSend,
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        const code = String(data?.code || "").trim();
+        if (code === "SUBSCRIPTION_REQUIRED") {
+          router.push(
+            `/vendor/billing?next=${encodeURIComponent(
+              "/vendor/dashboard/create-offer",
+            )}`,
+          );
+          return;
+        }
+        throw new Error(data?.message || "Failed to create offer");
+      }
+
+      alert("Offer submitted for admin review!");
+      router.push("/vendor/offers");
     } catch (error) {
       console.error("Error creating offer:", error);
-      alert("Failed to create offer. Please try again.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to create offer. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }

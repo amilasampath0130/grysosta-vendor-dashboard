@@ -138,7 +138,7 @@ export default function Information() {
     }
 
     // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 5 * 1025 * 1025) {
       setErrors(prev => ({ ...prev, [type === "id" ? "userIdImage" : type === "business" ? "businessRegImage" : "vendorLogo"]: "File size should be less than 5MB" }));
       return;
     }
