@@ -13,10 +13,20 @@ export default function VendorGuard({
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [vendorStatus, setVendorStatus] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(
+    null,
+  );
+  const [onboardingPlanKey, setOnboardingPlanKey] = useState<string | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const isOnboardingRoute = pathname.startsWith("/vendor/onboarding");
   const isPendingRoute = pathname.startsWith("/vendor/pending");
+  const isBillingRoute = pathname.startsWith("/vendor/billing");
   const isPublicFlow = isOnboardingRoute || isPendingRoute;
+
+  const isActiveSubscriptionStatus = (status?: string | null) =>
+    status === "active" || status === "trialing";
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -36,6 +46,10 @@ export default function VendorGuard({
             (data.user?.role === "vendor" ? "APPROVED" : "NEW");
           setIsAuthenticated(true);
           setVendorStatus(normalizedStatus);
+          setSubscriptionStatus(data.user?.vendorSubscription?.status || null);
+          setOnboardingPlanKey(
+            data.user?.vendorApplication?.business?.planKey || null,
+          );
         } else {
           setIsAuthenticated(false);
           if (!isPublicFlow) {
@@ -75,6 +89,19 @@ export default function VendorGuard({
     if (vendorStatus === "APPROVED" && (isOnboardingRoute || isPendingRoute)) {
       router.replace("/vendor/dashboard");
     }
+
+    if (
+      vendorStatus === "APPROVED" &&
+      !isOnboardingRoute &&
+      !isPendingRoute &&
+      !isBillingRoute &&
+      !isActiveSubscriptionStatus(subscriptionStatus)
+    ) {
+      const params = new URLSearchParams();
+      params.set("next", pathname || "/vendor/dashboard");
+      if (onboardingPlanKey) params.set("planKey", onboardingPlanKey);
+      router.replace(`/vendor/billing?${params.toString()}`);
+    }
   }, [
     pathname,
     router,
@@ -83,6 +110,9 @@ export default function VendorGuard({
     isAuthenticated,
     isOnboardingRoute,
     isPendingRoute,
+    isBillingRoute,
+    subscriptionStatus,
+    onboardingPlanKey,
   ]);
 
   if (loading) return <Loading />;

@@ -55,6 +55,15 @@ export default function Information() {
     website: "",
     yearEstablished: "",
     taxId: "",
+    planKey: "",
+    serviceArea: "",
+    businessDescription: "",
+    operatingHours: "",
+    facebookUrl: "",
+    instagramUrl: "",
+    tiktokUrl: "",
+    vacayCoinParticipation: false,
+    multiLocation: false,
   });
 
   // File uploads
@@ -159,10 +168,12 @@ export default function Information() {
     }
   };
 
-  const validateImageDimensions = (
+  const validateImageDimensionsInRange = (
     file: File,
-    expectedWidth: number,
-    expectedHeight: number,
+    minWidth: number,
+    minHeight: number,
+    maxWidth: number,
+    maxHeight: number,
   ) =>
     new Promise<{ ok: true } | { ok: false; message: string }>((resolve) => {
       const objectUrl = URL.createObjectURL(file);
@@ -173,14 +184,14 @@ export default function Information() {
         const h = (img as HTMLImageElement).naturalHeight;
         URL.revokeObjectURL(objectUrl);
 
-        if (w === expectedWidth && h === expectedHeight) {
+        if (w >= minWidth && w <= maxWidth && h >= minHeight && h <= maxHeight) {
           resolve({ ok: true });
           return;
         }
 
         resolve({
           ok: false,
-          message: `Logo must be exactly ${expectedWidth}×${expectedHeight}px (uploaded ${w}×${h}px)`,
+          message: `Logo must be between ${minWidth}×${minHeight}px and ${maxWidth}×${maxHeight}px (uploaded ${w}×${h}px)`,
         });
       };
 
@@ -212,7 +223,12 @@ export default function Information() {
     }
 
     if (type === "logo") {
-      const dimensionCheck = await validateImageDimensions(file, 1080, 1080);
+      if (file.type !== "image/png" && file.type !== "image/jpeg") {
+        setErrors(prev => ({ ...prev, vendorLogo: "Logo must be a PNG or JPEG file" }));
+        return;
+      }
+
+      const dimensionCheck = await validateImageDimensionsInRange(file, 800, 800, 2000, 2000);
       if (!dimensionCheck.ok) {
         setErrors(prev => ({ ...prev, vendorLogo: dimensionCheck.message }));
         return;
@@ -333,15 +349,16 @@ export default function Information() {
       newErrors.businessPhoneNumber = "Please enter a valid phone number";
     }
 
+    if (!vendorLogo) {
+      newErrors.vendorLogo = "Business logo is required";
+    }
+
     // Document validation
     if (!userIdImage) {
       newErrors.userIdImage = "Government ID image is required";
     }
     if (!businessRegImage) {
       newErrors.businessRegImage = "Business registration image is required";
-    }
-    if (!vendorLogo) {
-      newErrors.vendorLogo = "Business logo (1080×1080) is required";
     }
 
     setErrors(newErrors);
@@ -377,6 +394,10 @@ export default function Information() {
       
       // Append business details
       Object.entries(businessData).forEach(([key, value]) => {
+        if (typeof value === "boolean") {
+          submitData.append(key, value ? "true" : "false");
+          return;
+        }
         submitData.append(key, value);
       });
       
@@ -531,14 +552,14 @@ export default function Information() {
                 number={2} 
                 title="Business" 
                 active={activeTab === "business"} 
-                completed={activeTab !== "business" && !!businessData.businessName}
+                completed={activeTab !== "business" && !!businessData.businessName && !!vendorLogo}
               />
-              <div className={`flex-1 h-1 mx-2 ${activeTab !== "business" && !!businessData.businessName ? "bg-emerald-500" : "bg-gray-200"}`} />
+              <div className={`flex-1 h-1 mx-2 ${activeTab !== "business" && !!businessData.businessName && !!vendorLogo ? "bg-emerald-500" : "bg-gray-200"}`} />
               <Step 
                 number={3} 
                 title="Documents" 
                 active={activeTab === "documents"} 
-                completed={activeTab !== "documents" && !!userIdImage && !!businessRegImage && !!vendorLogo}
+                completed={activeTab !== "documents" && !!userIdImage && !!businessRegImage}
               />
             </div>
           </div>
@@ -759,6 +780,29 @@ export default function Information() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800 mb-4">Business Information</h2>
                   <div className="space-y-4">
+                    {!formData.referralSalesId?.trim() && (
+                      <InputField
+                        label="Referral / Sales ID"
+                        value={formData.referralSalesId}
+                        onChange={(value) => handleFormChange("referralSalesId", value)}
+                        icon={<Tag className="w-5 h-5" />}
+                        placeholder="(Optional)"
+                      />
+                    )}
+
+                    <PlanSelectField
+                      label="Plan Selection (optional)"
+                      value={businessData.planKey}
+                      onChange={(value) => handleFormChange("planKey", value, true)}
+                      icon={<ScrollText className="w-5 h-5" />}
+                      options={[
+                        { label: "Select later", value: "" },
+                        { label: "Bronze", value: "bronze" },
+                        { label: "Silver", value: "silver" },
+                        { label: "Gold", value: "gold" },
+                      ]}
+                    />
+
                     <InputField
                       label="Business Name *"
                       value={businessData.businessName}
@@ -796,6 +840,14 @@ export default function Information() {
                       placeholder="456 Business Ave, Suite 100"
                     />
 
+                    <InputField
+                      label="Service Area"
+                      value={businessData.serviceArea}
+                      onChange={(value) => handleFormChange("serviceArea", value, true)}
+                      icon={<MapPinned className="w-5 h-5" />}
+                      placeholder="e.g., Colombo, Gampaha, Kalutara"
+                    />
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <InputField
                         label="Business Phone *"
@@ -815,6 +867,21 @@ export default function Information() {
                       />
                     </div>
 
+                    <TextareaField
+                      label="Business Description"
+                      value={businessData.businessDescription}
+                      onChange={(value) => handleFormChange("businessDescription", value, true)}
+                      placeholder="Tell customers what your business offers"
+                    />
+
+                    <InputField
+                      label="Operating Hours"
+                      value={businessData.operatingHours}
+                      onChange={(value) => handleFormChange("operatingHours", value, true)}
+                      icon={<Landmark className="w-5 h-5" />}
+                      placeholder="e.g., Mon-Fri 9:00 AM - 6:00 PM"
+                    />
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <InputField
                         label="Year Established"
@@ -833,13 +900,82 @@ export default function Information() {
                       />
                     </div>
 
-                    <InputField
-                      label="Type of Offering"
+                    <SelectField
+                      label="Offer Type"
                       value={businessData.typeofoffering}
                       onChange={(value) => handleFormChange("typeofoffering", value, true)}
                       icon={<Tag className="w-5 h-5" />}
-                      placeholder="Products, Services, etc."
+                      options={["Products", "Services", "Both"]}
                     />
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <InputField
+                        label="Facebook"
+                        value={businessData.facebookUrl}
+                        onChange={(value) => handleFormChange("facebookUrl", value, true)}
+                        icon={<Globe className="w-5 h-5" />}
+                        placeholder="https://facebook.com/yourpage"
+                      />
+                      <InputField
+                        label="Instagram"
+                        value={businessData.instagramUrl}
+                        onChange={(value) => handleFormChange("instagramUrl", value, true)}
+                        icon={<Globe className="w-5 h-5" />}
+                        placeholder="https://instagram.com/yourhandle"
+                      />
+                      <InputField
+                        label="TikTok"
+                        value={businessData.tiktokUrl}
+                        onChange={(value) => handleFormChange("tiktokUrl", value, true)}
+                        icon={<Globe className="w-5 h-5" />}
+                        placeholder="https://tiktok.com/@yourhandle"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <CheckboxField
+                        label="Participate in Vacay Coin"
+                        checked={businessData.vacayCoinParticipation}
+                        onChange={(checked) => handleFormChange("vacayCoinParticipation", checked, true)}
+                      />
+                      <CheckboxField
+                        label="Multi-location business"
+                        checked={businessData.multiLocation}
+                        onChange={(checked) => handleFormChange("multiLocation", checked, true)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Business Logo *
+                        <span className="text-gray-500 text-xs ml-2">
+                          (PNG/JPEG only, 800×800 to 2000×2000)
+                        </span>
+                      </label>
+
+                      {vendorLogoPreview ? (
+                        <div className="relative mb-4">
+                          <img
+                            src={vendorLogoPreview}
+                            alt="Vendor Logo Preview"
+                            className="w-full h-48 object-contain rounded-lg border border-gray-300 bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFile("logo")}
+                            className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <FileUpload
+                          onChange={(e) => handleFileChange(e, "logo")}
+                          error={errors.vendorLogo}
+                          accept="image/png,image/jpeg"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -932,38 +1068,6 @@ export default function Information() {
                       <FileUpload
                         onChange={(e) => handleFileChange(e, "business")}
                         error={errors.businessRegImage}
-                      />
-                    )}
-                  </div>
-
-                  {/* Vendor Logo Upload */}
-                  <div className="mt-8">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Business Logo (1080×1080) *
-                      <span className="text-gray-500 text-xs ml-2">
-                        (Used for offer display)
-                      </span>
-                    </label>
-
-                    {vendorLogoPreview ? (
-                      <div className="relative mb-4">
-                        <img
-                          src={vendorLogoPreview}
-                          alt="Vendor Logo Preview"
-                          className="w-full h-48 object-contain rounded-lg border border-gray-300 bg-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeFile("logo")}
-                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <FileUpload
-                        onChange={(e) => handleFileChange(e, "logo")}
-                        error={errors.vendorLogo}
                       />
                     )}
                   </div>
@@ -1147,7 +1251,90 @@ const SelectField = ({
   </div>
 );
 
-const FileUpload = ({ onChange, error }: { onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string }) => (
+const PlanSelectField = ({
+  label,
+  value,
+  onChange,
+  error,
+  icon,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  icon?: React.ReactNode;
+  options: Array<{ label: string; value: string }>;
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <div className="relative">
+      {icon && (
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+          {icon}
+        </div>
+      )}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`
+          w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-2 border rounded-lg
+          focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+          transition-colors appearance-none bg-white
+          ${error ? "border-red-500" : "border-gray-300"}
+        `}
+      >
+        {options.map((o) => (
+          <option key={o.value || o.label} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+  </div>
+);
+
+const TextareaField = ({
+  label,
+  value,
+  onChange,
+  error,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  placeholder?: string;
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={4}
+      className={`
+        w-full px-4 py-2 border rounded-lg
+        focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+        transition-colors
+        ${error ? "border-red-500" : "border-gray-300"}
+      `}
+      placeholder={placeholder}
+    />
+    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+  </div>
+);
+
+const FileUpload = ({
+  onChange,
+  error,
+  accept,
+}: {
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  accept?: string;
+}) => (
   <div>
     <label className={`
       block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
@@ -1156,7 +1343,7 @@ const FileUpload = ({ onChange, error }: { onChange: (e: React.ChangeEvent<HTMLI
     `}>
       <input
         type="file"
-        accept="image/*"
+        accept={accept || "image/*"}
         onChange={onChange}
         className="hidden"
       />

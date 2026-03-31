@@ -47,6 +47,11 @@ type VendorProfileResponse = {
   success: boolean;
   user?: {
     vendorSubscription?: VendorSubscription;
+    vendorApplication?: {
+      business?: {
+        planKey?: PlanKey;
+      };
+    };
   };
   message?: string;
 };
@@ -97,10 +102,18 @@ export default function BillingPage() {
     [searchParams],
   );
 
+  const preselectedPlanKey = useMemo(
+    () => String(searchParams?.get("planKey") || "").trim() as PlanKey,
+    [searchParams],
+  );
+
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [checkoutAvailable, setCheckoutAvailable] = useState(true);
   const [profile, setProfile] = useState<VendorSubscription | null>(null);
+  const [recommendedPlanKey, setRecommendedPlanKey] = useState<PlanKey | null>(
+    null,
+  );
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkingOutKey, setCheckingOutKey] = useState<PlanKey | null>(null);
@@ -154,6 +167,7 @@ export default function BillingPage() {
         throw new Error(data?.message || "Failed to load profile");
       }
       setProfile(data.user?.vendorSubscription || null);
+      setRecommendedPlanKey(data.user?.vendorApplication?.business?.planKey || null);
     } finally {
       setLoadingProfile(false);
     }
@@ -216,6 +230,18 @@ export default function BillingPage() {
     confirm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess, sessionId]);
+
+  const selectedPlanKey = useMemo<PlanKey | null>(() => {
+    const key = preselectedPlanKey || recommendedPlanKey || "";
+    return key === "bronze" || key === "silver" || key === "gold" ? key : null;
+  }, [preselectedPlanKey, recommendedPlanKey]);
+
+  useEffect(() => {
+    if (!selectedPlanKey) return;
+    if (loadingPlans) return;
+    const el = document.getElementById(`plan-${selectedPlanKey}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [selectedPlanKey, loadingPlans]);
 
   const startCheckout = async (planKey: PlanKey) => {
     setCheckingOutKey(planKey);
@@ -361,6 +387,11 @@ export default function BillingPage() {
           Payment method details are entered on Stripe Checkout after you click
           Subscribe.
         </p>
+        {selectedPlanKey && !active && (
+          <p className="mt-1 text-sm text-gray-600">
+            Selected plan: {selectedPlanKey.toUpperCase()}
+          </p>
+        )}
       </div>
 
       {(error || isCanceled) && (
@@ -434,7 +465,12 @@ export default function BillingPage() {
             return (
               <div
                 key={plan.key}
-                className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                id={`plan-${plan.key}`}
+                className={`rounded-xl border bg-white p-5 shadow-sm ${
+                  selectedPlanKey === plan.key && !active
+                    ? "border-emerald-300"
+                    : "border-gray-200"
+                }`}
               >
                 <div className="space-y-1">
                   <h3 className="text-lg font-semibold text-gray-900">
