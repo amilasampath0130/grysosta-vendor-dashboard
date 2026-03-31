@@ -9,6 +9,7 @@ import {
   MapPin,
   Home,
   Briefcase,
+  Lock,
   Upload,
   X,
   AlertCircle,
@@ -36,6 +37,11 @@ export default function Information() {
     zipCode: "",
     email: "",
     phoneNumber: "",
+    vendorRole: "",
+    referralSalesId: "",
+    vendorDashboardPassword: "",
+    vendorDashboardPasswordConfirm: "",
+    termsAccepted: false,
   });
 
   // Business details
@@ -62,6 +68,7 @@ export default function Information() {
   // UI states
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"personal" | "business" | "documents">("personal");
 
@@ -79,7 +86,68 @@ export default function Information() {
     }
   }, [searchParams]);
 
-  const handleFormChange = (field: string, value: string, isBusiness: boolean = false) => {
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`, {
+          credentials: "include",
+          headers: { "Cache-Control": "no-cache" },
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const personal = data?.user?.vendorApplication?.personal;
+        const business = data?.user?.vendorApplication?.business;
+
+        if (personal) {
+          setFormData(prev => ({
+            ...prev,
+            firstName: personal.firstName ?? prev.firstName,
+            middleName: personal.middleName ?? prev.middleName,
+            lastName: personal.lastName ?? prev.lastName,
+            address: personal.address ?? prev.address,
+            city: personal.city ?? prev.city,
+            state: personal.state ?? prev.state,
+            zipCode: personal.zipCode ?? prev.zipCode,
+            email: personal.email ?? prev.email,
+            phoneNumber: personal.phoneNumber ?? prev.phoneNumber,
+            vendorRole: personal.vendorRole ?? prev.vendorRole,
+            referralSalesId: personal.referralSalesId ?? prev.referralSalesId,
+            termsAccepted:
+              typeof personal.termsAccepted === "boolean"
+                ? personal.termsAccepted
+                : prev.termsAccepted,
+          }));
+        }
+
+        if (business) {
+          setBusinessData(prev => ({
+            ...prev,
+            businessName: business.businessName ?? prev.businessName,
+            businessType: business.businessType ?? prev.businessType,
+            businessCategory: business.businessCategory ?? prev.businessCategory,
+            businessAddress: business.businessAddress ?? prev.businessAddress,
+            businessPhoneNumber: business.businessPhoneNumber ?? prev.businessPhoneNumber,
+            typeofoffering: business.typeofoffering ?? prev.typeofoffering,
+            website: business.website ?? prev.website,
+            yearEstablished: business.yearEstablished ?? prev.yearEstablished,
+            taxId: business.taxId ?? prev.taxId,
+          }));
+        }
+      } catch {
+        // Ignore draft load failures
+      }
+    };
+
+    loadDraft();
+  }, []);
+
+  const handleFormChange = (
+    field: string,
+    value: string | boolean,
+    isBusiness: boolean = false,
+  ) => {
     if (isBusiness) {
       setBusinessData(prev => ({ ...prev, [field]: value }));
     } else {
@@ -225,6 +293,27 @@ export default function Information() {
       newErrors.phoneNumber = "Please enter a valid phone number";
     }
 
+    // Vendor dashboard fields validation
+    if (!formData.vendorRole.trim()) {
+      newErrors.vendorRole = "Role is required";
+    }
+
+    if (!formData.vendorDashboardPassword.trim()) {
+      newErrors.vendorDashboardPassword = "Password is required";
+    } else if (formData.vendorDashboardPassword.length < 8) {
+      newErrors.vendorDashboardPassword = "Password must be at least 8 characters";
+    }
+
+    if (!formData.vendorDashboardPasswordConfirm.trim()) {
+      newErrors.vendorDashboardPasswordConfirm = "Please confirm your password";
+    } else if (formData.vendorDashboardPasswordConfirm !== formData.vendorDashboardPassword) {
+      newErrors.vendorDashboardPasswordConfirm = "Passwords do not match";
+    }
+
+    if (!formData.termsAccepted) {
+      newErrors.termsAccepted = "You must accept the Terms & Conditions";
+    }
+
     // Business details validation
     if (!businessData.businessName.trim()) {
       newErrors.businessName = "Business name is required";
@@ -278,6 +367,11 @@ export default function Information() {
       
       // Append personal details
       Object.entries(formData).forEach(([key, value]) => {
+        if (key === "vendorDashboardPasswordConfirm") return;
+        if (typeof value === "boolean") {
+          submitData.append(key, value ? "true" : "false");
+          return;
+        }
         submitData.append(key, value);
       });
       
@@ -311,6 +405,55 @@ export default function Information() {
       setErrors({ submit: "Server error. Please try again." });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveProgress = async () => {
+    if (saving || loading) return;
+
+    // Minimal validation to avoid saving obviously invalid password state
+    if (
+      (formData.vendorDashboardPassword || formData.vendorDashboardPasswordConfirm) &&
+      formData.vendorDashboardPassword !== formData.vendorDashboardPasswordConfirm
+    ) {
+      setErrors(prev => ({
+        ...prev,
+        vendorDashboardPasswordConfirm: "Passwords do not match",
+      }));
+      return;
+    }
+
+    setSaving(true);
+    setErrors(prev => ({ ...prev, submit: "" }));
+
+    try {
+      const { vendorDashboardPasswordConfirm, ...safeFormData } = formData;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/save-progress`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            ...safeFormData,
+            ...businessData,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        setErrors(prev => ({
+          ...prev,
+          submit: data?.message || "Failed to save progress",
+        }));
+      }
+    } catch {
+      setErrors(prev => ({ ...prev, submit: "Failed to save progress" }));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -540,7 +683,65 @@ export default function Information() {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Vendor Dashboard Access</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <SelectField
+                      label="Role *"
+                      value={formData.vendorRole}
+                      onChange={(value) => handleFormChange("vendorRole", value)}
+                      error={errors.vendorRole}
+                      icon={<Briefcase className="w-5 h-5" />}
+                      options={["Owner", "Manager", "Representative"]}
+                    />
+                    <InputField
+                      label="Referral / Sales ID"
+                      value={formData.referralSalesId}
+                      onChange={(value) => handleFormChange("referralSalesId", value)}
+                      icon={<Tag className="w-5 h-5" />}
+                      placeholder="(Optional)"
+                    />
+                    <InputField
+                      label="Password *"
+                      type="password"
+                      value={formData.vendorDashboardPassword}
+                      onChange={(value) => handleFormChange("vendorDashboardPassword", value)}
+                      error={errors.vendorDashboardPassword}
+                      icon={<Lock className="w-5 h-5" />}
+                      placeholder="Create a password"
+                    />
+                    <InputField
+                      label="Confirm Password *"
+                      type="password"
+                      value={formData.vendorDashboardPasswordConfirm}
+                      onChange={(value) => handleFormChange("vendorDashboardPasswordConfirm", value)}
+                      error={errors.vendorDashboardPasswordConfirm}
+                      icon={<Lock className="w-5 h-5" />}
+                      placeholder="Re-enter password"
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <CheckboxField
+                      label="I agree to the Terms & Conditions"
+                      checked={formData.termsAccepted}
+                      onChange={(checked) => handleFormChange("termsAccepted", checked)}
+                      error={errors.termsAccepted}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <button
+                    type="button"
+                    onClick={handleSaveProgress}
+                    disabled={saving}
+                    className={`px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors ${
+                      saving ? "opacity-60 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {saving ? "Saving..." : "Save progress"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab("business")}
@@ -970,5 +1171,30 @@ const FileUpload = ({ onChange, error }: { onChange: (e: React.ChangeEvent<HTMLI
     {error && (
       <p className="mt-2 text-sm text-red-600">{error}</p>
     )}
+  </div>
+);
+
+const CheckboxField = ({
+  label,
+  checked,
+  onChange,
+  error,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  error?: string;
+}) => (
+  <div>
+    <label className="flex items-start gap-3 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+      />
+      <span className="text-sm text-gray-700">{label}</span>
+    </label>
+    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
   </div>
 );
