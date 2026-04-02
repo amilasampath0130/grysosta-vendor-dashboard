@@ -157,49 +157,20 @@ export default function CreateAdvertisement() {
         return;
       }
 
-      // If vendor already has a pending advertisement, do not create another.
-      if (response.status === 409) {
-        const existingId = String(data?.advertisement?._id || "").trim();
-        const existingIsPaid = data?.advertisement?.isPaid;
-
-        if (existingId && existingIsPaid === false) {
-          setSubmitMessage(
-            "You already have a pending advertisement. Redirecting to payment...",
-          );
-
-          const checkoutRes = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/payment/create-advertisement-checkout-session`,
-            {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ advertisementId: existingId }),
-            },
-          );
-          const checkoutData = await checkoutRes.json();
-
-          if (!checkoutRes.ok) {
-            throw new Error(
-              checkoutData?.message ||
-                "Failed to start payment. Please try again.",
-            );
-          }
-
-          const url = String(checkoutData?.url || "").trim();
-          if (!url) {
-            throw new Error("Payment session created but missing checkout url");
-          }
-
-          window.location.href = url;
-          return;
-        }
-
+      if (
+        response.status === 409 &&
+        String((data as any)?.code || "").trim() === "PLAN_LIMIT_REACHED"
+      ) {
         setSubmitError(
           data?.message ||
-            "You already have a pending advertisement awaiting admin approval.",
+            "Your current plan has reached its advertisement limit. Upgrade to continue.",
         );
-        router.push("/vendor/offers");
+        router.push("/vendor/billing");
         return;
+      }
+
+      if (response.status === 409) {
+        throw new Error(data?.message || "Failed to submit advertisement");
       }
 
       if (!response.ok) {

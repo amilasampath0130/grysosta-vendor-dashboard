@@ -193,6 +193,11 @@ export default function CreateOffer() {
           );
           return;
         }
+        if (code === "PLAN_LIMIT_REACHED") {
+          alert(data?.message || "Your current plan has reached its offer limit.");
+          router.push("/vendor/billing");
+          return;
+        }
         throw new Error(data?.message || "Failed to create offer");
       }
 

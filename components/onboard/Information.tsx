@@ -800,6 +800,7 @@ export default function Information() {
                         { label: "Bronze", value: "bronze" },
                         { label: "Silver", value: "silver" },
                         { label: "Gold", value: "gold" },
+                        { label: "Diamond", value: "diamond" },
                       ]}
                     />
 

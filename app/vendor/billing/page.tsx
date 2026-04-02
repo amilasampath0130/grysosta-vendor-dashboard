@@ -3,13 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type PlanKey = "bronze" | "silver" | "gold";
+type PlanKey = "bronze" | "silver" | "gold" | "diamond";
+
+type PlanLimits = {
+  activeOfferLimit: number | null;
+  advertisementLimit: number | null;
+};
 
 type SubscriptionPlan = {
   key: PlanKey;
   name: string;
   currency: string;
   priceCents: number;
+  summary: string;
+  features: string[];
+  limits: PlanLimits;
 };
 
 type VendorSubscription = {
@@ -19,34 +27,24 @@ type VendorSubscription = {
   cancelAtPeriodEnd?: boolean;
 };
 
-const PLAN_FEATURES: Record<PlanKey, string[]> = {
-  bronze: [
-    "1 location",
-    "Profile page",
-    "3 photo uploads",
-    "1 active offer",
-    "Listed in category search",
-  ],
-  silver: [
-    "Everything in Bronze",
-    "Up to 2 locations",
-    "8 photo uploads",
-    "Up to 3 active offers",
-    "Offer scheduling",
-    "Featured category placement",
-  ],
-  gold: [
-    "Everything in Silver",
-    "Unlimited locations",
-    "20 photo uploads",
-    "Unlimited offers",
-  ],
+type VendorBilling = {
+  activePlan: SubscriptionPlan | null;
+  recommendedPlan: SubscriptionPlan | null;
+  usage: {
+    activeOfferCount: number;
+    pendingOfferCount: number;
+    occupiedOfferCount: number;
+    activeAdvertisementCount: number;
+    pendingAdvertisementCount: number;
+    occupiedAdvertisementCount: number;
+  };
 };
 
 type VendorProfileResponse = {
   success: boolean;
   user?: {
     vendorSubscription?: VendorSubscription;
+    vendorBilling?: VendorBilling;
     vendorApplication?: {
       business?: {
         planKey?: PlanKey;
@@ -65,6 +63,9 @@ type PlansResponse = {
 
 const isActiveStatus = (status?: string) =>
   status === "active" || status === "trialing";
+
+const isPlanKey = (value: string): value is PlanKey =>
+  value === "bronze" || value === "silver" || value === "gold" || value === "diamond";
 
 const formatPrice = (cents: number, currency: string) => {
   const amount = cents / 100;
@@ -111,6 +112,7 @@ export default function BillingPage() {
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [checkoutAvailable, setCheckoutAvailable] = useState(true);
   const [profile, setProfile] = useState<VendorSubscription | null>(null);
+  const [billing, setBilling] = useState<VendorBilling | null>(null);
   const [recommendedPlanKey, setRecommendedPlanKey] = useState<PlanKey | null>(
     null,
   );
@@ -167,7 +169,14 @@ export default function BillingPage() {
         throw new Error(data?.message || "Failed to load profile");
       }
       setProfile(data.user?.vendorSubscription || null);
-      setRecommendedPlanKey(data.user?.vendorApplication?.business?.planKey || null);
+      setBilling(data.user?.vendorBilling || null);
+      const recommendedKey =
+        String(
+          data.user?.vendorBilling?.recommendedPlan?.key ||
+            data.user?.vendorApplication?.business?.planKey ||
+            "",
+        ).trim().toLowerCase();
+      setRecommendedPlanKey(isPlanKey(recommendedKey) ? recommendedKey : null);
     } finally {
       setLoadingProfile(false);
     }
@@ -233,7 +242,7 @@ export default function BillingPage() {
 
   const selectedPlanKey = useMemo<PlanKey | null>(() => {
     const key = preselectedPlanKey || recommendedPlanKey || "";
-    return key === "bronze" || key === "silver" || key === "gold" ? key : null;
+    return isPlanKey(key) ? key : null;
   }, [preselectedPlanKey, recommendedPlanKey]);
 
   useEffect(() => {
@@ -266,7 +275,7 @@ export default function BillingPage() {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planKey }),
+          body: JSON.stringify({ planKey, nextPath: nextPath || undefined }),
         },
       );
 
@@ -310,12 +319,25 @@ export default function BillingPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planKey }),
+        body: JSON.stringify({ planKey, nextPath: nextPath || undefined }),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
+        if (String(data?.code || "").trim() === "SUBSCRIPTION_CHECKOUT_REQUIRED") {
+          await startCheckout(planKey);
+          return;
+        }
         throw new Error(data?.message || "Failed to change subscription plan");
+      }
+
+      if (String(data?.action || "").trim() === "checkout") {
+        const url = String(data?.url || "").trim();
+        if (!url) {
+          throw new Error("Checkout session created but missing url");
+        }
+        window.location.href = url;
+        return;
       }
 
       await fetchProfile();
@@ -375,6 +397,7 @@ export default function BillingPage() {
   };
 
   const active = isActiveStatus(profile?.status);
+  const usage = billing?.usage;
 
   return (
     <div className="space-y-6">
@@ -413,9 +436,22 @@ export default function BillingPage() {
             {loadingProfile ? (
               <p className="text-sm text-gray-600">Loading...</p>
             ) : active ? (
-              <p className="text-sm text-gray-700">
-                {String(profile?.planKey || "").toUpperCase()} • {profile?.status}
-              </p>
+              <div className="space-y-1 text-sm text-gray-700">
+                <p>
+                  {String(profile?.planKey || "").toUpperCase()} • {profile?.status}
+                </p>
+                {usage && billing?.activePlan && (
+                  <p className="text-xs text-gray-500">
+                    Offers: {usage.occupiedOfferCount}
+                    {billing.activePlan.limits.activeOfferLimit === null
+                      ? " / Unlimited"
+                      : ` / ${billing.activePlan.limits.activeOfferLimit}`} · Ads: {usage.occupiedAdvertisementCount}
+                    {billing.activePlan.limits.advertisementLimit === null
+                      ? " / Unlimited"
+                      : ` / ${billing.activePlan.limits.advertisementLimit}`}
+                  </p>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-gray-700">No active subscription.</p>
             )}
@@ -446,13 +482,13 @@ export default function BillingPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {loadingPlans ? (
-          <div className="md:col-span-3 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
+          <div className="md:col-span-2 xl:col-span-4 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
             Loading plans...
           </div>
         ) : plans.length === 0 ? (
-          <div className="md:col-span-3 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
+          <div className="md:col-span-2 xl:col-span-4 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
             No plans available.
           </div>
         ) : (
@@ -479,13 +515,20 @@ export default function BillingPage() {
                   <p className="text-sm text-gray-600">
                     {formatPrice(plan.priceCents, plan.currency)} / month
                   </p>
+                  {plan.summary && (
+                    <p className="text-sm text-gray-500">{plan.summary}</p>
+                  )}
                 </div>
 
                 <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-gray-700">
-                  {PLAN_FEATURES[plan.key].map((text) => (
+                  {plan.features.map((text) => (
                     <li key={text}>{text}</li>
                   ))}
                 </ul>
+
+                <div className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                  Offer slots: {plan.limits.activeOfferLimit ?? "Unlimited"} · Ad slots: {plan.limits.advertisementLimit ?? "Unlimited"}
+                </div>
 
                 <div className="mt-4">
                   <button
