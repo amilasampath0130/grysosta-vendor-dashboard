@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ApiResponse, parseJsonResponse } from "@/lib/api";
 
 const buildVerifyOtpUrl = (email: string, notice?: string) => {
   const params = new URLSearchParams({ email });
@@ -13,9 +14,7 @@ const buildVerifyOtpUrl = (email: string, notice?: string) => {
   return `/auth/verify-otp?${params.toString()}`;
 };
 
-type LoginResponse = {
-  success?: boolean;
-  message?: string;
+type LoginResponse = ApiResponse & {
   vendorStatus?: string;
   canResubmit?: boolean;
   rejectionReason?: string;
@@ -56,13 +55,7 @@ const LoginForm = () => {
         },
       );
 
-      let data: LoginResponse = {};
-
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error("Invalid server response.");
-      }
+      const data = await parseJsonResponse<LoginResponse>(response);
 
       if (!response.ok) {
         // If vendor was rejected, redirect to onboarding so they can resubmit
@@ -92,8 +85,12 @@ const LoginForm = () => {
 
       // ✅ Success
       router.push(buildVerifyOtpUrl(email));
-    } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }

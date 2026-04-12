@@ -2,6 +2,16 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import { ApiResponse, parseJsonResponse } from "@/lib/api";
+
+type VerifyVendorOtpResponse = ApiResponse;
+
+type VendorProfileResponse = ApiResponse<never> & {
+  user?: {
+    vendorStatus?: string;
+    role?: string;
+  };
+};
 
 export default function VerifyOtpPage() {
   const router = useRouter();
@@ -27,9 +37,9 @@ export default function VerifyOtpPage() {
           }/api/vendor/otp-status?email=${encodeURIComponent(email)}`,
           { credentials: "include" },
         );
-        const data = await res.json();
+        const data = await parseJsonResponse<ApiResponse>(res);
         if (!mounted) return;
-        if (data && typeof data.msLeft === "number") {
+        if (typeof data?.msLeft === "number") {
           setMsLeft(data.msLeft);
         }
       } catch {
@@ -75,9 +85,9 @@ export default function VerifyOtpPage() {
         },
       );
 
-      const data = await res.json();
+      const data = await parseJsonResponse<VerifyVendorOtpResponse>(res);
 
-      if (data.success) {
+      if (res.ok && data?.success) {
         const profileRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`,
           {
@@ -87,10 +97,12 @@ export default function VerifyOtpPage() {
         );
 
         if (profileRes.ok) {
-          const profileData = await profileRes.json();
+          const profileData = await parseJsonResponse<VendorProfileResponse>(
+            profileRes,
+          );
           const status =
-            profileData.user?.vendorStatus ||
-            (profileData.user?.role === "vendor" ? "APPROVED" : "NEW");
+            profileData?.user?.vendorStatus ||
+            (profileData?.user?.role === "vendor" ? "APPROVED" : "NEW");
 
           if (status === "APPROVED") {
             router.replace("/vendor/dashboard");
@@ -103,7 +115,7 @@ export default function VerifyOtpPage() {
           router.replace("/vendor/onboarding");
         }
       } else {
-        setError(data.message || "Invalid OTP");
+        setError(data?.message || "Invalid OTP");
       }
     } catch {
       setError("Server error");
@@ -126,15 +138,15 @@ export default function VerifyOtpPage() {
           body: JSON.stringify({ email }),
         },
       );
-      const data = await res.json();
-      if (data.success) {
+      const data = await parseJsonResponse<ApiResponse>(res);
+      if (res.ok && data?.success) {
         setInfo("OTP resent. Check your email.");
-        setMsLeft(60 * 1000);
-      } else if (data.msLeft) {
+        setMsLeft(typeof data?.msLeft === "number" ? data.msLeft : 30 * 1000);
+      } else if (typeof data?.msLeft === "number") {
         setMsLeft(data.msLeft);
-        setInfo(data.message || "Please wait before resending OTP.");
+        setInfo(data?.message || "Please wait before resending OTP.");
       } else {
-        setInfo(data.message || "Could not resend OTP");
+        setInfo(data?.message || "Could not resend OTP");
       }
     } catch {
       setInfo("Server error");
