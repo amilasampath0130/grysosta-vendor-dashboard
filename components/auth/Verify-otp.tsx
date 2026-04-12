@@ -7,6 +7,7 @@ export default function VerifyOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
+  const notice = searchParams.get("notice") || "";
 
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -186,6 +187,12 @@ export default function VerifyOtpPage() {
 
           <div className="text-sm text-gray-600">{info}</div>
         </div>
+
+        {notice && !error && !info && (
+          <p className="bg-blue-500 text-white text-sm p-2 rounded mt-3">
+            {notice}
+          </p>
+        )}
 
         {error && (
           <p className="bg-red-500 text-white text-sm p-2 rounded mt-3">

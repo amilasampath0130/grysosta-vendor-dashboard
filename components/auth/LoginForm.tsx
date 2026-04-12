@@ -3,6 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const buildVerifyOtpUrl = (email: string, notice?: string) => {
+  const params = new URLSearchParams({ email });
+
+  if (notice) {
+    params.set("notice", notice);
+  }
+
+  return `/auth/verify-otp?${params.toString()}`;
+};
+
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,6 +66,14 @@ const LoginForm = () => {
           return;
         }
 
+        if (
+          response.status === 429 &&
+          data?.message?.toLowerCase().includes("otp already sent")
+        ) {
+          router.push(buildVerifyOtpUrl(email, data.message));
+          return;
+        }
+
         // Handle known HTTP errors - use backend message
         throw new Error(data?.message || "Login failed.");
       }
@@ -65,7 +83,7 @@ const LoginForm = () => {
       }
 
       // ✅ Success
-      router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+      router.push(buildVerifyOtpUrl(email));
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
