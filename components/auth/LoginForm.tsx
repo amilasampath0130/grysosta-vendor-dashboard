@@ -13,6 +13,14 @@ const buildVerifyOtpUrl = (email: string, notice?: string) => {
   return `/auth/verify-otp?${params.toString()}`;
 };
 
+type LoginResponse = {
+  success?: boolean;
+  message?: string;
+  vendorStatus?: string;
+  canResubmit?: boolean;
+  rejectionReason?: string;
+};
+
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,7 +56,7 @@ const LoginForm = () => {
         },
       );
 
-      let data: any = null;
+      let data: LoginResponse = {};
 
       try {
         data = await response.json();
