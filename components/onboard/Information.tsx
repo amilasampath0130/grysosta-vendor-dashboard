@@ -24,8 +24,11 @@ import {
   Landmark,
   Globe
 } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function Information() {
+  const apiBaseUrl = getApiBaseUrl();
+
   // Personal details
   const [formData, setFormData] = useState({
     firstName: "",
@@ -98,7 +101,7 @@ export default function Information() {
   useEffect(() => {
     const loadDraft = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`, {
+        const res = await fetch(`${apiBaseUrl}/api/vendor/profile`, {
           credentials: "include",
           headers: { "Cache-Control": "no-cache" },
         });
@@ -150,7 +153,7 @@ export default function Information() {
     };
 
     loadDraft();
-  }, []);
+  }, [apiBaseUrl]);
 
   const handleFormChange = (
     field: string,
@@ -407,7 +410,7 @@ export default function Information() {
       if (vendorLogo) submitData.append("vendorLogo", vendorLogo);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/submit-info`,
+        `${apiBaseUrl}/api/vendor/submit-info`,
         {
           method: "POST",
           credentials: "include",
@@ -451,7 +454,7 @@ export default function Information() {
       const { vendorDashboardPasswordConfirm, ...safeFormData } = formData;
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/save-progress`,
+        `${apiBaseUrl}/api/vendor/save-progress`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -480,7 +483,7 @@ export default function Information() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/logout`, {
+      await fetch(`${apiBaseUrl}/api/vendor/logout`, {
         method: "POST",
         credentials: "include",
       });

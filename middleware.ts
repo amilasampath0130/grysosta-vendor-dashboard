@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = getApiBaseUrl();
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;

@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Loading from "@/components/UI/Loading";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function VendorGuard({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const apiBaseUrl = getApiBaseUrl();
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -33,7 +35,7 @@ export default function VendorGuard({
       try {
         // Check if we have the auth cookie by making an API call
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`,
+          `${apiBaseUrl}/api/vendor/profile`,
           {
             credentials: "include",
             headers: { "Cache-Control": "no-cache" },
@@ -69,7 +71,7 @@ export default function VendorGuard({
     };
 
     checkAuth();
-  }, [router, pathname, isPublicFlow]);
+  }, [router, pathname, isPublicFlow, apiBaseUrl]);
 
   useEffect(() => {
     if (loading || !isAuthenticated || !vendorStatus) return;
