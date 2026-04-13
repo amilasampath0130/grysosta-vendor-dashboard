@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Upload, X } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 type Advertisement = {
   _id: string;
@@ -33,6 +34,7 @@ export default function EditAdvertisement() {
     () => String(params?.advertisementId || ""),
     [params],
   );
+  const apiBaseUrl = getApiBaseUrl();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export default function EditAdvertisement() {
 
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/${advertisementId}`,
+          `${apiBaseUrl}/api/advertisements/${advertisementId}`,
           {
             credentials: "include",
             headers: { "Cache-Control": "no-cache" },
@@ -198,7 +200,7 @@ export default function EditAdvertisement() {
       if (image) formData.append("image", image);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/${advertisementId}`,
+        `${apiBaseUrl}/api/advertisements/${advertisementId}`,
         {
           method: "PATCH",
           credentials: "include",
@@ -211,42 +213,8 @@ export default function EditAdvertisement() {
         throw new Error(data?.message || "Failed to update advertisement");
       }
 
-      const updatedAd = data?.advertisement as Advertisement | undefined;
-      const requiresPayment = updatedAd?.isPaid === false;
-
-      if (requiresPayment) {
-        setSubmitMessage(
-          "Dates updated. Redirecting to payment for the additional days...",
-        );
-
-        const checkoutRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/payment/create-advertisement-checkout-session`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ advertisementId }),
-          },
-        );
-        const checkoutData = await checkoutRes.json();
-
-        if (!checkoutRes.ok) {
-          throw new Error(
-            checkoutData?.message || "Failed to start payment. Please try again.",
-          );
-        }
-
-        const url = String(checkoutData?.url || "").trim();
-        if (!url) {
-          throw new Error("Payment session created but missing checkout url");
-        }
-
-        window.location.href = url;
-        return;
-      }
-
-      setSubmitMessage("Advertisement updated successfully.");
-      router.push("/vendor/offers");
+      setSubmitMessage("Advertisement updated and submitted for review.");
+      setTimeout(() => router.push("/vendor/offers"), 1500);
     } catch (error) {
       setSubmitError(
         error instanceof Error

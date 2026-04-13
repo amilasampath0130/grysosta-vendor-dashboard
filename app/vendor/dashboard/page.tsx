@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 import {
   ArrowRight,
   BellRing,
@@ -248,7 +249,6 @@ export default function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [paymentBanner, setPaymentBanner] = useState<BannerState>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<VendorProfileResponse["user"] | null>(null);
@@ -257,59 +257,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     const payment = searchParams.get("payment");
-    const sessionId = searchParams.get("session_id");
-
     if (payment === "cancel") {
       setPaymentBanner({
         kind: "info",
-        message: "Payment cancelled. Your advertisement is saved but not submitted for approval.",
+        message: "Subscription checkout cancelled.",
       });
-      return;
     }
-
-    if (payment !== "success" || !sessionId || isConfirming) return;
-
-    const confirm = async () => {
-      setIsConfirming(true);
-      setPaymentBanner({ kind: "info", message: "Confirming payment..." });
-
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/payment/confirm-checkout-session`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sessionId }),
-          },
-        );
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data?.message || "Failed to confirm payment");
-        }
-
-        setPaymentBanner({
-          kind: "success",
-          message: "Payment confirmed. Your advertisement is now submitted for admin approval.",
-        });
-
-        router.replace("/vendor/offers");
-      } catch (confirmError) {
-        setPaymentBanner({
-          kind: "error",
-          message:
-            confirmError instanceof Error
-              ? confirmError.message
-              : "Failed to confirm payment",
-        });
-      } finally {
-        setIsConfirming(false);
-      }
-    };
-
-    confirm();
-  }, [isConfirming, router, searchParams]);
+  }, [searchParams]);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -317,9 +271,9 @@ export default function Dashboard() {
       setError(null);
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const apiUrl = getApiBaseUrl();
         if (!apiUrl) {
-          throw new Error("NEXT_PUBLIC_API_URL is not configured (vendor_dashboard).");
+          throw new Error("API URL is not configured.");
         }
 
         const [profileRes, offersRes, adsRes] = await Promise.all([
@@ -454,9 +408,7 @@ export default function Dashboard() {
         ad.status === "APPROVED"
           ? "Advertisement approved"
           : ad.status === "PENDING"
-            ? ad.isPaid === false
-              ? "Awaiting payment or review"
-              : "Advertisement pending review"
+            ? "Advertisement pending review"
             : ad.status === "STOPPED"
               ? "Advertisement stopped"
               : "Advertisement rejected",
@@ -497,7 +449,7 @@ export default function Dashboard() {
             />
             <ActionCard
               title="Create Advertisement"
-              description="Boost visibility with a paid advertisement placement."
+              description="Boost visibility with a targeted advertisement placement."
               icon={<PlusCircle className="h-6 w-6" />}
               href="/vendor/dashboard/create-advertisement"
               accent="blue"

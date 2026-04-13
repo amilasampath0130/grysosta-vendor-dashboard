@@ -2,9 +2,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Upload, X, ArrowLeft } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function CreateAdvertisement() {
   const router = useRouter();
+  const apiBaseUrl = getApiBaseUrl();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -135,7 +137,7 @@ export default function CreateAdvertisement() {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements`,
+        `${apiBaseUrl}/api/advertisements`,
         {
           method: "POST",
           credentials: "include",
@@ -169,46 +171,12 @@ export default function CreateAdvertisement() {
         return;
       }
 
-      if (response.status === 409) {
-        throw new Error(data?.message || "Failed to submit advertisement");
-      }
-
       if (!response.ok) {
         throw new Error(data?.message || "Failed to submit advertisement");
       }
 
-      const advertisementId = String(data?.advertisement?._id || "").trim();
-      if (!advertisementId) {
-        throw new Error("Advertisement created but missing id");
-      }
-
-      setSubmitMessage(
-        "Advertisement created. Redirecting to secure payment to submit for approval...",
-      );
-
-      const checkoutRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/payment/create-advertisement-checkout-session`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ advertisementId }),
-        },
-      );
-
-      const checkoutData = await checkoutRes.json();
-      if (!checkoutRes.ok) {
-        throw new Error(
-          checkoutData?.message || "Failed to start payment. Please try again.",
-        );
-      }
-
-      const url = String(checkoutData?.url || "").trim();
-      if (!url) {
-        throw new Error("Payment session created but missing checkout url");
-      }
-
-      window.location.href = url;
+      setSubmitMessage("Advertisement submitted for admin approval.");
+      setTimeout(() => router.push("/vendor/offers"), 1500);
     } catch (error) {
       console.error("Error creating advertisement:", error);
       setSubmitError(
