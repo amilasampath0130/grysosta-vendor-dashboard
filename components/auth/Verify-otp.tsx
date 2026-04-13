@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ApiResponse, parseJsonResponse } from "@/lib/api";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 type VerifyVendorOtpResponse = ApiResponse;
 
@@ -14,6 +15,7 @@ type VendorProfileResponse = ApiResponse<never> & {
 };
 
 export default function VerifyOtpPage() {
+  const apiBaseUrl = getApiBaseUrl();
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
@@ -32,9 +34,7 @@ export default function VerifyOtpPage() {
       if (!email) return;
       try {
         const res = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL
-          }/api/vendor/otp-status?email=${encodeURIComponent(email)}`,
+          `${apiBaseUrl}/api/vendor/otp-status?email=${encodeURIComponent(email)}`,
           { credentials: "include" },
         );
         const data = await parseJsonResponse<ApiResponse>(res);
@@ -56,7 +56,7 @@ export default function VerifyOtpPage() {
       mounted = false;
       clearInterval(iv);
     };
-  }, [email]);
+  }, [email, apiBaseUrl]);
 
   useEffect(() => {
     if (msLeft <= 0) return;
@@ -76,7 +76,7 @@ export default function VerifyOtpPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/verify-otp`,
+        `${apiBaseUrl}/api/vendor/verify-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -89,7 +89,7 @@ export default function VerifyOtpPage() {
 
       if (res.ok && data?.success) {
         const profileRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`,
+          `${apiBaseUrl}/api/vendor/profile`,
           {
             credentials: "include",
             headers: { "Cache-Control": "no-cache" },
@@ -112,7 +112,7 @@ export default function VerifyOtpPage() {
             router.replace("/vendor/onboarding");
           }
         } else {
-          router.replace("/vendor/onboarding");
+          router.replace("/vendor/dashboard");
         }
       } else {
         setError(data?.message || "Invalid OTP");
@@ -130,7 +130,7 @@ export default function VerifyOtpPage() {
     setInfo("");
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/resend-otp`,
+        `${apiBaseUrl}/api/vendor/resend-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

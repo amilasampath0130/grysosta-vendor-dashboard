@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiResponse, parseJsonResponse } from "@/lib/api";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 const buildVerifyOtpUrl = (email: string, notice?: string) => {
   const params = new URLSearchParams({ email });
@@ -21,6 +22,7 @@ type LoginResponse = ApiResponse & {
 };
 
 const LoginForm = () => {
+  const apiBaseUrl = getApiBaseUrl();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,7 @@ const LoginForm = () => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/login`,
+        `${apiBaseUrl}/api/vendor/login`,
         {
           method: "POST",
           headers: {
