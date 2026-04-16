@@ -2,10 +2,15 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ApiResponse, parseJsonResponse } from "@/lib/api";
+import {
+  ApiResponse,
+  authFetch,
+  parseJsonResponse,
+  storeAuthToken,
+} from "@/lib/api";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
-type VerifyVendorOtpResponse = ApiResponse;
+type VerifyVendorOtpResponse = ApiResponse<{ token?: string }>;
 
 type VendorProfileResponse = ApiResponse<never> & {
   user?: {
@@ -88,10 +93,14 @@ export default function VerifyOtpPage() {
       const data = await parseJsonResponse<VerifyVendorOtpResponse>(res);
 
       if (res.ok && data?.success) {
-        const profileRes = await fetch(
+        const token = typeof data?.data?.token === "string" ? data.data.token : "";
+        if (token) {
+          storeAuthToken(token);
+        }
+
+        const profileRes = await authFetch(
           `${apiBaseUrl}/api/vendor/profile`,
           {
-            credentials: "include",
             headers: { "Cache-Control": "no-cache" },
           },
         );

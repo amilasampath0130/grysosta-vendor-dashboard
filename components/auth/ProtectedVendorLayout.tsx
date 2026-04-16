@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Loading from "@/components/UI/Loading";
+import { authFetch, clearAuthToken } from "@/lib/api";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function VendorGuard({
@@ -33,11 +34,9 @@ export default function VendorGuard({
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check if we have the auth cookie by making an API call
-        const res = await fetch(
+        const res = await authFetch(
           `${apiBaseUrl}/api/vendor/profile`,
           {
-            credentials: "include",
             headers: { "Cache-Control": "no-cache" },
           },
         );
@@ -54,6 +53,7 @@ export default function VendorGuard({
           );
         } else {
           setIsAuthenticated(false);
+          clearAuthToken();
           if (!isPublicFlow) {
             router.replace("/auth/login");
             return;
@@ -61,6 +61,7 @@ export default function VendorGuard({
         }
       } catch {
         setIsAuthenticated(false);
+        clearAuthToken();
         if (!isPublicFlow) {
           router.replace("/auth/login");
           return;

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { authFetch } from "@/lib/api";
 
 type PlanKey = "bronze" | "silver" | "gold" | "diamond";
 
@@ -157,10 +158,9 @@ export default function BillingPage() {
         );
       }
 
-      const res = await fetch(
+      const res = await authFetch(
         `${apiUrl}/api/vendor/profile`,
         {
-          credentials: "include",
           headers: { "Cache-Control": "no-cache" },
         },
       );
@@ -206,11 +206,10 @@ export default function BillingPage() {
       setError(null);
 
       try {
-        const res = await fetch(
+        const res = await authFetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/payment/confirm-subscription-checkout-session`,
           {
             method: "POST",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sessionId }),
           },
@@ -269,11 +268,10 @@ export default function BillingPage() {
         );
       }
 
-      const res = await fetch(
+      const res = await authFetch(
         `${apiUrl}/api/payment/create-subscription-checkout-session`,
         {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ planKey, nextPath: nextPath || undefined }),
         },
@@ -315,9 +313,8 @@ export default function BillingPage() {
         );
       }
 
-      const res = await fetch(`${apiUrl}/api/payment/change-subscription-plan`, {
+      const res = await authFetch(`${apiUrl}/api/payment/change-subscription-plan`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planKey, nextPath: nextPath || undefined }),
       });
@@ -372,9 +369,8 @@ export default function BillingPage() {
         );
       }
 
-      const res = await fetch(`${apiUrl}/api/payment/cancel-subscription`, {
+      const res = await authFetch(`${apiUrl}/api/payment/cancel-subscription`, {
         method: "POST",
-        credentials: "include",
       });
 
       const data = await res.json();

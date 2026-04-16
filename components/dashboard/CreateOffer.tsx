@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Clock,
 } from "lucide-react";
+import { authFetch } from "@/lib/api";
 
 export default function CreateOffer() {
   const router = useRouter();
@@ -176,9 +177,8 @@ export default function CreateOffer() {
         formDataToSend.append("image", image);
       }
 
-      const response = await fetch(`${apiUrl}/api/offers`, {
+      const response = await authFetch(`${apiUrl}/api/offers`, {
         method: "POST",
-        credentials: "include",
         body: formDataToSend,
       });
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { authFetch } from "@/lib/api";
 
 type Offer = {
   _id: string;
@@ -78,12 +79,10 @@ export default function Offers() {
       }
 
       const [offersRes, adsRes] = await Promise.all([
-        fetch(`${apiUrl}/api/offers/me`, {
-          credentials: "include",
+        authFetch(`${apiUrl}/api/offers/me`, {
           headers: { "Cache-Control": "no-cache" },
         }),
-        fetch(`${apiUrl}/api/advertisements/me`, {
-          credentials: "include",
+        authFetch(`${apiUrl}/api/advertisements/me`, {
           headers: { "Cache-Control": "no-cache" },
         }),
       ]);
@@ -124,11 +123,10 @@ export default function Offers() {
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/payment/create-advertisement-checkout-session`,
         {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ advertisementId }),
         },
@@ -166,11 +164,10 @@ export default function Offers() {
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/advertisements/${advertisementId}`,
         {
           method: "DELETE",
-          credentials: "include",
         },
       );
 
@@ -208,9 +205,8 @@ export default function Offers() {
         );
       }
 
-      const response = await fetch(`${apiUrl}/api/offers/${offerId}`, {
+      const response = await authFetch(`${apiUrl}/api/offers/${offerId}`, {
         method: "DELETE",
-        credentials: "include",
       });
 
       const data = await response.json();

@@ -24,6 +24,7 @@ import {
   Landmark,
   Globe
 } from "lucide-react";
+import { authFetch, clearAuthToken } from "@/lib/api";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function Information() {
@@ -101,8 +102,7 @@ export default function Information() {
   useEffect(() => {
     const loadDraft = async () => {
       try {
-        const res = await fetch(`${apiBaseUrl}/api/vendor/profile`, {
-          credentials: "include",
+        const res = await authFetch(`${apiBaseUrl}/api/vendor/profile`, {
           headers: { "Cache-Control": "no-cache" },
         });
 
@@ -409,11 +409,10 @@ export default function Information() {
       if (businessRegImage) submitData.append("businessRegImage", businessRegImage);
       if (vendorLogo) submitData.append("vendorLogo", vendorLogo);
 
-      const response = await fetch(
+      const response = await authFetch(
         `${apiBaseUrl}/api/vendor/submit-info`,
         {
           method: "POST",
-          credentials: "include",
           body: submitData,
         }
       );
@@ -453,12 +452,11 @@ export default function Information() {
     try {
       const { vendorDashboardPasswordConfirm, ...safeFormData } = formData;
 
-      const response = await fetch(
+      const response = await authFetch(
         `${apiBaseUrl}/api/vendor/save-progress`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({
             ...safeFormData,
             ...businessData,
@@ -483,13 +481,13 @@ export default function Information() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${apiBaseUrl}/api/vendor/logout`, {
+      await authFetch(`${apiBaseUrl}/api/vendor/logout`, {
         method: "POST",
-        credentials: "include",
       });
     } catch (error) {
       console.error("Logout failed", error);
     } finally {
+      clearAuthToken();
       router.push("/auth/login");
     }
   };

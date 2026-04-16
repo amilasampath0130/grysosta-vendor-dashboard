@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
+import { authFetch } from "@/lib/api";
 import {
   ArrowRight,
   BellRing,
@@ -277,16 +278,13 @@ export default function Dashboard() {
         }
 
         const [profileRes, offersRes, adsRes] = await Promise.all([
-          fetch(`${apiUrl}/api/vendor/profile`, {
-            credentials: "include",
+          authFetch(`${apiUrl}/api/vendor/profile`, {
             headers: { "Cache-Control": "no-cache" },
           }),
-          fetch(`${apiUrl}/api/offers/me`, {
-            credentials: "include",
+          authFetch(`${apiUrl}/api/offers/me`, {
             headers: { "Cache-Control": "no-cache" },
           }),
-          fetch(`${apiUrl}/api/advertisements/me`, {
-            credentials: "include",
+          authFetch(`${apiUrl}/api/advertisements/me`, {
             headers: { "Cache-Control": "no-cache" },
           }),
         ]);

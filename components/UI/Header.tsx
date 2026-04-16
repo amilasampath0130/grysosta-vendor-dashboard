@@ -3,6 +3,7 @@
 import { Search, Bell, Menu, LogOut } from "lucide-react";
 import { useState, Dispatch, SetStateAction, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { authFetch, clearAuthToken } from "@/lib/api";
 
 interface HeaderProps {
   setOpen: Dispatch<SetStateAction<boolean>>;
@@ -24,10 +25,9 @@ export default function Header({ setOpen }: HeaderProps) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch(
+        const res = await authFetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/vendor/profile`,
           {
-            credentials: "include",
             headers: { "Cache-Control": "no-cache" },
           },
         );
@@ -54,13 +54,13 @@ export default function Header({ setOpen }: HeaderProps) {
   // 🚪 Logout
   const logout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/logout`, {
+      await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vendor/logout`, {
         method: "POST",
-        credentials: "include",
       });
     } catch (error) {
       console.error("Failed to logout vendor", error);
     } finally {
+      clearAuthToken();
       router.replace("/auth/login");
       router.refresh();
     }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Upload, X } from "lucide-react";
+import { authFetch } from "@/lib/api";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 type Advertisement = {
@@ -75,10 +76,9 @@ export default function EditAdvertisement() {
       setLoadError(null);
 
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `${apiBaseUrl}/api/advertisements/${advertisementId}`,
           {
-            credentials: "include",
             headers: { "Cache-Control": "no-cache" },
           },
         );
@@ -199,11 +199,10 @@ export default function EditAdvertisement() {
       formData.append("endDate", endDate);
       if (image) formData.append("image", image);
 
-      const response = await fetch(
+      const response = await authFetch(
         `${apiBaseUrl}/api/advertisements/${advertisementId}`,
         {
           method: "PATCH",
-          credentials: "include",
           body: formData,
         },
       );

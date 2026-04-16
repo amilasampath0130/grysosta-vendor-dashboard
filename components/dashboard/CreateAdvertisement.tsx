@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Upload, X, ArrowLeft } from "lucide-react";
+import { authFetch } from "@/lib/api";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function CreateAdvertisement() {
@@ -136,11 +137,10 @@ export default function CreateAdvertisement() {
         formData.append("image", image);
       }
 
-      const response = await fetch(
+      const response = await authFetch(
         `${apiBaseUrl}/api/advertisements`,
         {
           method: "POST",
-          credentials: "include",
           body: formData,
         },
       );

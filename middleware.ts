@@ -4,7 +4,9 @@ import type { NextRequest } from "next/server";
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export async function middleware(request: NextRequest) {
-  const token = request.cookies.get("auth-token")?.value;
+  const token =
+    request.cookies.get("auth-token")?.value ||
+    request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
   const isProtectedRoute =
@@ -13,13 +15,6 @@ export async function middleware(request: NextRequest) {
   const isPendingRoute = pathname.startsWith("/vendor/pending");
   const isPublicFlow = isOnboardingRoute || isPendingRoute;
 
-  // Block access to protected routes when no auth cookie is present
-  if (!token && isProtectedRoute && !isPublicFlow) {
-    const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
   if (!token || !API_URL) {
     return NextResponse.next();
   }
@@ -27,7 +22,7 @@ export async function middleware(request: NextRequest) {
   try {
     const profileRes = await fetch(`${API_URL}/api/vendor/profile`, {
       headers: {
-        cookie: `auth-token=${token}`,
+        Authorization: `Bearer ${token}`,
         "Cache-Control": "no-cache",
       },
     });
