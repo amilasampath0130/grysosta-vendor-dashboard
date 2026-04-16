@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
-const API_URL = getApiBaseUrl();
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
@@ -14,9 +13,14 @@ export async function middleware(request: NextRequest) {
   const isPendingRoute = pathname.startsWith("/vendor/pending");
   const isPublicFlow = isOnboardingRoute || isPendingRoute;
 
+  // Block access to protected routes when no auth cookie is present
+  if (!token && isProtectedRoute && !isPublicFlow) {
+    const loginUrl = new URL("/auth/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
   if (!token || !API_URL) {
-    // In production, vendor auth is often cross-domain and the backend cookie
-    // is not visible to this middleware. Let client-side guard resolve auth.
     return NextResponse.next();
   }
 
