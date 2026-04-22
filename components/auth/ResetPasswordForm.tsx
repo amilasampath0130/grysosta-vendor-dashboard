@@ -72,6 +72,11 @@ export default function ResetPasswordForm() {
     setError(null);
     setInfo(null);
 
+    if (!apiBaseUrl) {
+      setError("API URL is not configured. Please contact support.");
+      return;
+    }
+
     if (!email.trim()) {
       setError("Email is required.");
       return;
@@ -88,11 +93,11 @@ export default function ResetPasswordForm() {
 
       const data = await parseJsonResponse<ApiResponse>(res);
       if (!res.ok) {
-        throw new Error("Unable to send code right now.");
+        throw new Error(data?.message || "Unable to send code right now.");
       }
 
       if (!data?.success) {
-        throw new Error("Unable to send code right now.");
+        throw new Error(data?.message || "Unable to send code right now.");
       }
 
       setInfo("Code sent to your email");

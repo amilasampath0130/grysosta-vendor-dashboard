@@ -25,6 +25,7 @@ const LoginForm = () => {
   const apiBaseUrl = getApiBaseUrl();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,6 +39,11 @@ const LoginForm = () => {
     if (loading) return;
 
     setError(null);
+
+    if (!apiBaseUrl) {
+      setError("API URL is not configured. Please contact support.");
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setError("Email and password are required.");
@@ -114,13 +120,23 @@ const LoginForm = () => {
             className="border border-gray-200 py-2 px-4 bg-zinc-100/40 rounded"
           />
 
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            placeholder="Password"
-            className="border border-gray-200 py-2 px-4 bg-zinc-100/40 rounded"
-          />
+          <div className="relative">
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              className="border border-gray-200 py-2 px-4 pr-20 bg-zinc-100/40 rounded w-full"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-blue-600"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
           <button
             type="button"
