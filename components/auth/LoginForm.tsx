@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ApiResponse, parseJsonResponse } from "@/lib/api";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
@@ -29,6 +29,8 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const notice = searchParams.get("notice");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -121,6 +123,22 @@ const LoginForm = () => {
           />
 
           <button
+            type="button"
+            onClick={() =>
+              router.push(
+                `/auth/reset-password${
+                  email.trim()
+                    ? `?email=${encodeURIComponent(email.trim())}`
+                    : ""
+                }`,
+              )
+            }
+            className="text-sm text-blue-600 text-left hover:underline"
+          >
+            Reset Password
+          </button>
+
+          <button
             disabled={loading}
             className={`bg-green-500 text-white font-bold px-6 py-2 rounded transition ${
               loading ? "opacity-60 cursor-not-allowed" : "hover:bg-green-600"
@@ -132,6 +150,12 @@ const LoginForm = () => {
           {error && (
             <div className="bg-red-500 text-white text-sm py-2 px-3 rounded-md">
               {error}
+            </div>
+          )}
+
+          {!error && notice && (
+            <div className="bg-blue-500 text-white text-sm py-2 px-3 rounded-md">
+              {notice}
             </div>
           )}
         </form>

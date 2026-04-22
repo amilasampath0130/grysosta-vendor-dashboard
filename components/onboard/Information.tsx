@@ -27,6 +27,11 @@ import {
 import { authFetch, clearAuthToken } from "@/lib/api";
 import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
+const strongPasswordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&*!]).{8,}$/;
+const strongPasswordError =
+  "Password must be at least 8 characters and include uppercase, lowercase, number, and one special character (@#$%^&*!).";
+
 export default function Information() {
   const apiBaseUrl = getApiBaseUrl();
 
@@ -319,8 +324,8 @@ export default function Information() {
 
     if (!formData.vendorDashboardPassword.trim()) {
       newErrors.vendorDashboardPassword = "Password is required";
-    } else if (formData.vendorDashboardPassword.length < 8) {
-      newErrors.vendorDashboardPassword = "Password must be at least 8 characters";
+    } else if (!strongPasswordRegex.test(formData.vendorDashboardPassword)) {
+      newErrors.vendorDashboardPassword = strongPasswordError;
     }
 
     if (!formData.vendorDashboardPasswordConfirm.trim()) {
