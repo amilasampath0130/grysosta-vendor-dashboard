@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import LoginForm from "@/components/auth/LoginForm";
 import { getServerSession } from "next-auth";
 // import { authOptions } from "./api/auth/[...nextauth]/route";
@@ -10,7 +11,9 @@ export default async function Home() {
   // }
   return (
     <main>
-      <LoginForm />
+      <Suspense fallback={<div>Loading...</div>}>
+        <LoginForm />
+      </Suspense>
     </main>
   );
 }
