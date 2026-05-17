@@ -12,7 +12,6 @@ import {
   Star,
   Store,
   BellRing,
-  Coins,
 } from "lucide-react";
 import { Dispatch, SetStateAction } from "react";
 
@@ -24,7 +23,6 @@ interface SidebarProps {
 const navItems = [
   { name: "Dashboard", href: "/vendor/dashboard", icon: Home },
   { name: "Offers/rewards", href: "/vendor/offers", icon: Star },
-  { name: "Coins", href: "/vendor/coins", icon: Coins },
   { name: "Business Profile", href: "/vendor/businessProfile", icon: Store },
   { name: "Vendor Profile", href: "/vendor/profile", icon: Users },
   // { name: "Products", href: "/vendor/products", icon: ShoppingCart },
